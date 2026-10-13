@@ -11,6 +11,11 @@ import numpy as np
 SR = 44100
 AUDIO_DIR = Path(__file__).resolve().parent / "audio"
 TEMPO = 0.92  # đọc chậm lại một chút cho trầm, thong thả
+# gTTS tiếng Việt chỉ có giọng nữ. Để ra giọng nam trầm, ấm của người kể chuyện:
+# hạ cả âm sắc (formant) 12% bằng asetrate, rồi hạ thêm cao độ 30% mà giữ nguyên formant
+# bằng rubberband -> cao độ còn khoảng 130 Hz, vẫn rõ chữ (đã thử bằng Whisper).
+FORMANT = 0.88
+PITCH = 0.70
 rng = np.random.default_rng(7)
 
 
@@ -27,11 +32,17 @@ def narration_path(i: int, text: str) -> Path:
 
 
 def load_voice(path: Path) -> np.ndarray:
-    """Giải mã, đọc chậm lại, cắt im lặng hai đầu, thêm chút vang phòng."""
-    af = (f"atempo={TEMPO},highpass=f=90,"
+    """Giải mã, đổi sang giọng nam trầm, cắt im lặng hai đầu, EQ ấm.
+
+    Không thêm vang hay nén: giọng review nên khô, gần mic, và hai bước đó làm mờ chữ.
+    """
+    af = (f"aresample=24000,asetrate=24000*{FORMANT},aresample=24000,"
+          f"rubberband=pitch={PITCH}:tempo={TEMPO / FORMANT:.4f}:formant=preserved:pitchq=quality,"
+          "highpass=f=70,equalizer=f=160:t=q:w=1:g=3,equalizer=f=3000:t=q:w=1.5:g=1.5,"
+          "highshelf=f=7000:g=-3,"
           "silenceremove=start_periods=1:start_threshold=-45dB,"
           "areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
-          "aecho=0.8:0.5:60|110:0.18|0.10,loudnorm=I=-16:TP=-2")
+          "loudnorm=I=-16:TP=-2")
     raw = subprocess.run(
         ["ffmpeg", "-v", "error", "-i", str(path), "-af", af,
          "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"],
