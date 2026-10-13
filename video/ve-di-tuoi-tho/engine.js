@@ -542,8 +542,8 @@
       else if (kind === 'in') { const a = actor(target); const [hx, hy] = headWorld(a); camSet(zoom || 1.75, hx, hy + 40, 0.3); }
       else if (kind === 'row') {
         const it = items[target]; if (!it) return;
-        const p = it.obj.parts; const lx = (p.rowX || -200) + 160, ly = p.rowY[zoom || 0];
-        camSet(1.9, it.x + it.s * lx, it.y + it.s * ly, 0.4);
+        // phóng vừa đủ để cả tấm vé nằm trên dải phụ đề
+        camSet(1.5, it.x, it.y + 20, 0.4);
       }
     },
     shake: (amp) => shake(amp),

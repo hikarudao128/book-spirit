@@ -14,6 +14,7 @@ Tài liệu và công cụ để viết review sách.
 Các bài review:
 
 - [`reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video.md`](reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video.md): kịch bản video review *Cho tôi xin một vé đi tuổi thơ* (Nguyễn Nhật Ánh), đã đánh dấu cue người que.
+- [`reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video-hai-huoc.md`](reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video-hai-huoc.md): bản lời thoại hài hước (lồng trend mạng xã hội) dùng cho video; mã dựng video ở [`video/ve-di-tuoi-tho/`](video/ve-di-tuoi-tho/).
 
 Nguồn:
 
