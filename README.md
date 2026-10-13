@@ -8,3 +8,4 @@ Tài liệu và công cụ để viết review sách.
 - [`templates/review-sach.md`](templates/review-sach.md): template điền sẵn cho một bài review.
 - [`docs/phan-tich-cach-review-the-reviewer.md`](docs/phan-tich-cach-review-the-reviewer.md): phân tích 5 video review phim của kênh The Reviewer, nguồn của phương pháp trên.
 - [`sources/transcripts/`](sources/transcripts/): transcript gốc của 5 video (phụ đề tự động tiếng Việt của YouTube).
+- [`reviews/`](reviews/): các bài review đã làm theo quy trình, ví dụ [*Cho tôi xin một vé đi tuổi thơ*](reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban.md).
