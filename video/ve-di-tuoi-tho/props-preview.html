@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Props preview</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+  html, body { margin: 0; background: #888; }
+  svg.board { display: block; width: 1920px; height: 1080px; background: #fff; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<script src="props.js"></script>
+<script>
+(async () => {
+  const fams = ['600 20px "Baloo 2"', '700 20px "Baloo 2"', '800 20px "Baloo 2"',
+    '500 20px "Be Vietnam Pro"', '600 20px "Be Vietnam Pro"', '700 20px "Be Vietnam Pro"'];
+  await Promise.all(fams.map((f) => document.fonts.load(f, 'AẮỆỮđ')));
+  await document.fonts.ready;
+  const NS = 'http://www.w3.org/2000/svg';
+  const P = window.PROPS;
+  function board(name, bg) {
+    const s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '0 0 1920 1080'); s.setAttribute('class', 'board'); s.id = name;
+    if (bg) s.style.background = bg;
+    document.body.appendChild(s); return s;
+  }
+  function put(b, obj, x, y, sc) {
+    obj.el.setAttribute('transform', `translate(${x},${y}) scale(${sc || 1})`);
+    b.appendChild(obj.el); return obj;
+  }
+  function label(b, txt, x, y) {
+    const t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('font-family', 'monospace');
+    t.setAttribute('font-size', 20); t.setAttribute('fill', '#c0392b'); t.setAttribute('text-anchor', 'middle');
+    t.textContent = txt; b.appendChild(t);
+  }
+
+  // 1: ticket + books
+  let b = board('01-ticket-books', '#EEF3F6');
+  let tk = put(b, P.ticket(), 480, 290); tk.parts.stamps[0].setAttribute('display', 'inline'); tk.parts.stamps[1].setAttribute('display', 'inline');
+  let tk2 = put(b, P.ticket(), 1440, 290); tk2.setFace('back');
+  put(b, P.book1(), 640, 790); put(b, P.book2(), 1280, 790);
+  label(b, 'ticket front (2 stamps)', 480, 30); label(b, 'ticket back', 1440, 30);
+
+  // 2: scale + chapters
+  b = board('02-scale-chapters', '#FFF6E0');
+  [-12, 0, 12].forEach((d, i) => { const s = put(b, P.scale(), 330 + i * 630, 300, 0.85); s.setTilt(d); label(b, 'setTilt(' + d + ')', 330 + i * 630, 30); });
+  put(b, P.chapters(), 960, 820); label(b, 'chapters', 960, 690);
+
+  // 3: album
+  b = board('03-album', '#EEF3F6');
+  [0, 1.5, 3].forEach((t, i) => { const a = put(b, P.album(), 330 + i * 630, 560, 0.85); a.setFlip(t); label(b, 'setFlip(' + t + ')', 330 + i * 630, 1050); });
+
+  // 4: pages + icecream
+  b = board('04-pages-icecream', '#EEF3F6');
+  put(b, P.strikePage(), 480, 280, 0.95).setProgress(0.3); label(b, 'strikePage 0.3', 480, 30);
+  put(b, P.strikePage(), 1440, 280, 0.95).setProgress(1); label(b, 'strikePage 1', 1440, 30);
+  put(b, P.markPage(), 480, 790, 0.95).setProgress(0.6); label(b, 'markPage 0.6', 480, 560);
+  [0, 0.7, 1.4].forEach((s, i) => { put(b, P.icecream(), 1180 + i * 260, 770, 0.85).setDrip(s); label(b, 'drip ' + s, 1180 + i * 260, 1070); });
+
+  // 5: checklist, bubbles, signs, tags, bigText
+  b = board('05-ui', '#FFF6E0');
+  put(b, P.checklist([{ kind: 'ok', text: 'Dễ đọc, nhiều tiếng cười' }, { kind: 'ok', text: 'Chạm đúng chỗ người lớn' }, { kind: 'ok', text: 'Mỗi chương đọc riêng được' },
+    { kind: 'minus', text: 'Hơi rời rạc, ít cốt truyện' }, { kind: 'minus', text: 'Vài đoạn giảng hơi lộ' }]), 470, 300);
+  ['★?!', '◆@#', '♪~', '&%!'].forEach((t, i) => put(b, P.bubble(t), 1080 + i * 230, 120));
+  put(b, P.sign('Đả đảo!'), 1050, 640); put(b, P.sign('Trả lại\ntuổi thơ'), 1350, 640); put(b, P.sign('Không ngủ trưa'), 1650, 640);
+  ['dark', 'light', 'warm', 'cool'].forEach((s, i) => put(b, P.tag('Nhãn ' + s + ' · Tuổi thơ', s), 480, 680 + i * 98));
+  put(b, P.bigText('Tuổi thơ ơi!', { size: 120, color: '#F08A24', stroke: 14 }), 1300, 860);
+  put(b, P.bigText('Đọc hộ bạn', { size: 80, family: 'Be Vietnam Pro', weight: 700 }), 1300, 1000);
+
+  // backgrounds
+  b = board('06-bgXom'); put(b, P.bgXom(), 0, 0);
+  b = board('06b-bgXom-chars'); put(b, P.bgXom(), 0, 0);
+  [[600, 600], [1300, 520]].forEach(([x, h]) => { const r = document.createElementNS(NS, 'rect'); r.setAttribute('x', x - 110); r.setAttribute('y', 930 - h); r.setAttribute('width', 220); r.setAttribute('height', h); r.setAttribute('rx', 100); r.setAttribute('fill', 'rgba(60,60,200,0.45)'); b.appendChild(r); });
+  b = board('07-bgOffice'); put(b, P.bgOffice(), 0, 0);
+  b = board('08-bgSplit'); put(b, P.bgSplit(), 0, 0);
+  b = board('08b-bgSplit-dim'); const sp = put(b, P.bgSplit('lúc nhỏ', 'lúc lớn'), 0, 0); sp.parts.dimRight.setAttribute('opacity', 0.45); sp.parts.glowLeft.setAttribute('opacity', 0.25);
+  b = board('09-endCard'); put(b, P.endCard(), 0, 0);
+  window.__ready = true;
+})().catch((e) => { window.__error = String(e && e.stack || e); });
+</script>
+</body>
+</html>

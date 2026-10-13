@@ -114,6 +114,7 @@
   const cam = { s: 1, fx: W / 2, fy: H / 2, shake: [] };
   const actors = {}, items = {}, bgs = {};
   let curBg = null;
+  let stamped = 0;      // số ga đã đóng dấu, để vé tạo lại vẫn giữ dấu cũ
   let subChunks = [], subEl = null;
   let L = {};            // các lớp svg
   const tween = (n, fn, delay = 0) => tweens.push({ f0: F + delay, n: Math.max(1, n), fn });
@@ -372,6 +373,7 @@
       const obj = PROPS[builder](...(args || []));
       if (builder === 'chapters') obj.parts.boxes.forEach((p) => p.setAttribute('display', 'none'));
       if (builder === 'checklist') obj.parts.rows.forEach((p) => p.setAttribute('display', 'none'));
+      if (builder === 'ticket') for (let k = 0; k < stamped; k++) obj.parts.stamps[k].setAttribute('display', 'inline');
       addItem(id, obj, o);
     },
     text: (id, str, o) => {
@@ -381,6 +383,7 @@
     unprop: (id, mode) => removeItem(id, mode),
     stamp: (id, n) => {
       const it = items[id]; if (!it) return;
+      stamped = Math.max(stamped, n + 1);
       const st = it.obj.parts.stamps[n], inner = it.obj.parts.stampInner ? it.obj.parts.stampInner[n] : wrapPart(st);
       st.setAttribute('display', 'inline');
       const keys = [2.4, 1.5, 0.9, 1.05, 1];
