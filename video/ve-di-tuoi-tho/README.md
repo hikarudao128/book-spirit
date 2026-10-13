@@ -29,4 +29,5 @@ Xem thử vài khung: `node render.mjs --stills 100,2000,5000` (ảnh ở `build
 
 Giọng hiện tại là giọng tổng hợp. Muốn dùng giọng thật: thu từng câu thành
 `build/tts/line_XXX.wav` (48 kHz mono, đánh số theo `i` trong `build/script.json`),
-rồi chạy lại từ bước `build_audio.py`; mốc thời gian và nhép miệng tự khớp theo bản thu.
+giữ nguyên file `.key` cùng tên, và tự cắt khoảng lặng đầu/cuối mỗi câu (script không xử lý lại file đã có `.key` khớp).
+Sau đó chạy lại từ bước `build_audio.py`; mốc thời gian và nhép miệng tự khớp theo bản thu.
