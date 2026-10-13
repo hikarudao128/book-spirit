@@ -1,9 +1,13 @@
-// Engine dựng hình theo từng khung cho video người que.
-// Tất cả trạng thái là hàm tất định của số khung: chạy lại từ 0 luôn ra cùng một kết quả,
+// Engine dựng hình theo từng khung cho video người que (bản mượt, 60 khung/giây).
+// Mọi trạng thái là hàm tất định của số khung: chạy lại từ 0 luôn ra cùng một kết quả,
 // nên nhiều tiến trình có thể render song song các đoạn khác nhau.
+// Kịch bản (script.js) và timing.json vẫn tính theo 24 khung/giây; engine tự quy đổi.
 (function () {
   'use strict';
-  const FPS = 24, W = 1920, H = 1080, GROUND = 930;
+  const FPS = 60, SRC_FPS = 24, W = 1920, H = 1080, GROUND = 930;
+  const R24 = FPS / SRC_FPS;                       // hệ số đổi khung 24 → 60
+  const fr = (n24) => Math.max(1, Math.round(n24 * R24));
+  const sec = (s) => Math.max(1, Math.round(s * FPS));
   const NS = 'http://www.w3.org/2000/svg';
   const INK = '#1D1D1F', SKIN = '#FBE3D6', RED = '#D1495B';
   const mk = (tag, attrs = {}, parent) => {
@@ -13,12 +17,25 @@
     return e;
   };
   const lerp = (a, b, t) => a + (b - a) * t;
-  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
-  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const inOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const outC = (t) => 1 - Math.pow(1 - t, 3);
+  const inC = (t) => t * t * t;
+  const outBack = (t, s = 1.70158) => { const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+  const inBack = (t, s = 1.70158) => (s + 1) * t * t * t - s * t * t;
+  function outBounce(t) {
+    const n = 7.5625, d = 2.75;
+    if (t < 1 / d) return n * t * t;
+    if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75;
+    if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375;
+    return n * (t -= 2.625 / d) * t + 0.984375;
+  }
   function rng(seed) { let s = seed >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+  const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+  const f1 = (v) => v.toFixed(1), f3 = (v) => v.toFixed(3);
 
-  // ---------- Tư thế (giống demo) ----------
+  // ---------- Tư thế ----------
   const SH = { L: [-24, -180], R: [24, -180] };
   const POSES = {
     'dung':          { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [34, -142], h: [36, -104], s: 'nam' } },
@@ -33,6 +50,17 @@
     'an-mung':       { L: { e: [-52, -216], h: [-60, -266], s: 'nam' }, R: { e: [52, -216], h: [60, -266], s: 'nam' } },
     'cam-sach':      { L: { e: [-8, -150], h: [22, -176], s: 'nam' }, R: { e: [50, -146], h: [92, -176], s: 'nam' } },
   };
+  // Tay biểu diễn bằng góc + độ dài (vai → khuỷu, khuỷu → bàn tay) để nội suy theo cung, không co rút.
+  function toPolar(side, p) {
+    const sh = SH[side];
+    const ex = p.e[0] - sh[0], ey = p.e[1] - sh[1], hx = p.h[0] - p.e[0], hy = p.h[1] - p.e[1];
+    return { a1: Math.atan2(ey, ex), l1: Math.hypot(ex, ey), a2: Math.atan2(hy, hx), l2: Math.hypot(hx, hy), s: p.s };
+  }
+  function fromPolar(side, q) {
+    const sh = SH[side];
+    const e = [sh[0] + Math.cos(q.a1) * q.l1, sh[1] + Math.sin(q.a1) * q.l1];
+    return { e, h: [e[0] + Math.cos(q.a2) * q.l2, e[1] + Math.sin(q.a2) * q.l2], s: q.s };
+  }
   const clonePose = (p) => JSON.parse(JSON.stringify(p));
 
   // ---------- Nhân vật ----------
@@ -61,6 +89,7 @@
     const st = `stroke="${INK}" stroke-width="6" stroke-linecap="round" fill="none"`;
     switch (kind) {
       case 'blink': return `<path d="M ${x - 9} ${y} L ${x + 9} ${y}" ${st}/>`;
+      case 'half': return `<path d="M ${x} ${y - 4} L ${x} ${y + 5}" ${st}/>`;
       case 'cuoi': return `<path d="M ${x - 9} ${y + 4} Q ${x} ${y - 9} ${x + 9} ${y + 4}" ${st}/>`;
       case 'nham': return `<path d="M ${x - 9} ${y - 2} Q ${x} ${y + 7} ${x + 9} ${y - 2}" ${st}/>`;
       case 'tron': return `<circle cx="${x}" cy="${y}" r="10" fill="#FFFFFF" stroke="${INK}" stroke-width="5"/><circle cx="${x + 1}" cy="${y + 1}" r="4" fill="${INK}"/>`;
@@ -71,9 +100,12 @@
   }
   function mouthSVG(kind, [x, y]) {
     const st = `stroke="${INK}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"`;
+    if (kind.startsWith('talk:')) {            // miệng nói: độ mở liên tục theo âm lượng
+      const o = +kind.slice(5);
+      const ry = 2.5 + 9.5 * o, rx = 8 + 3.5 * o;
+      return `<ellipse cx="${x}" cy="${f1(y + o * 2)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${RED}" ${st}/>`;
+    }
     switch (kind) {
-      case 'he': return `<ellipse cx="${x}" cy="${y}" rx="9" ry="5" fill="${RED}" ${st}/>`;
-      case 'mo': return `<ellipse cx="${x}" cy="${y + 2}" rx="11" ry="11" fill="${RED}" ${st}/>`;
       case 'cuoi': return `<path d="M ${x - 14} ${y - 5} Q ${x} ${y + 16} ${x + 14} ${y - 5} Z" fill="${RED}" ${st}/>`;
       case 'sun': return `<path d="M ${x - 16} ${y - 6} Q ${x} ${y + 18} ${x + 16} ${y - 6} Z" fill="${RED}" ${st}/><rect x="${x - 12}" y="${y - 5}" width="24" height="7" fill="#FFFFFF"/><rect x="${x - 2}" y="${y - 5}" width="6" height="7" fill="${INK}"/>`;
       case 'mim': return `<path d="M ${x - 11} ${y} Q ${x} ${y + 7} ${x + 12} ${y - 5}" fill="none" ${st}/>`;
@@ -106,20 +138,25 @@
   // ---------- Trạng thái toàn cục ----------
   let F = -1;
   let tweens = [], laters = [], sfx = [];
-  let events = [];       // [{f, fn}] đã sắp xếp
-  let evPtr = 0;
-  let ampAll = null;     // biên độ giọng theo khung
+  let events = [], evPtr = 0;
+  let amp24 = null;                  // biên độ giọng theo khung 24
+  let ampS = 0;                      // biên độ đã làm mượt (bám nhanh, nhả chậm)
   let speaker = 'mot';
-  let lastTalkShape = 'ngam', lastTalkF = -10;
-  const cam = { s: 1, fx: W / 2, fy: H / 2, shake: [] };
+  const cam = { s: 1, fx: W / 2, fy: H / 2, shakeF: -1, shakeA: 0 };
   const actors = {}, items = {}, bgs = {};
-  let curBg = null;
-  let stamped = 0;      // số ga đã đóng dấu, để vé tạo lại vẫn giữ dấu cũ
+  let curBg = null, stamped = 0;
+  let wipe = null;                   // {f0} khi đang chạy tấm che chuyển cảnh
   let subChunks = [], subEl = null;
-  let L = {};            // các lớp svg
+  let L = {};
   const tween = (n, fn, delay = 0) => tweens.push({ f0: F + delay, n: Math.max(1, n), fn });
   const later = (delay, fn) => laters.push({ f: F + delay, fn });
-  const playSfx = (type, delay = 0) => sfx.push({ frame: F + delay, type });
+  const playSfx = (type, delay = 0) => sfx.push({ frame: (F + delay) / R24, type });
+  const time = () => F / FPS;
+  function ampAt(f) {                // nội suy biên độ 24 khung sang 60 khung
+    if (!amp24) return 0;
+    const x = f / R24, i = Math.floor(x), t = x - i;
+    return lerp(amp24[i] || 0, amp24[i + 1] || 0, t);
+  }
 
   // ---------- Tạo nhân vật ----------
   function makeActor(id) {
@@ -128,7 +165,7 @@
     const g = mk('g', { display: 'none' }, L.actors);
     const legs = mk('g', { stroke: INK, 'stroke-width': 7, 'stroke-linecap': 'round', fill: 'none' }, g);
     const hip = -16 - 102 * legL;
-    mk('path', { d: `M -9 ${hip} L -15 -16 M 9 ${hip} L 15 -16` }, legs);
+    const legPath = mk('path', {}, legs);
     mk('ellipse', { cx: -20, cy: -9, rx: 16, ry: 9, fill: '#FFFFFF', 'stroke-width': 5 }, legs);
     mk('ellipse', { cx: 21, cy: -9, rx: 16, ry: 9, fill: '#FFFFFF', 'stroke-width': 5 }, legs);
     const up0 = mk('g', { transform: `translate(0 ${u})` }, g);
@@ -157,11 +194,11 @@
     const fxg = mk('g', {}, L.fx);
     const r = rng(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
     const a = {
-      id, d, u, g, upper, tie, book, eyesG: eyes, mouthG: mouth, armL, armR, handL, handR, fxg, r,
-      vis: false, x: 0, y: GROUND, flip: false, k: d.k, pop: 1, dy: 0, slideX: 0,
+      id, d, u, hip, g, legPath, upper, head, tie, book, eyesG: eyes, mouthG: mouth, armL, armR, handL, handR, fxg, r,
+      vis: false, x: 0, y: GROUND, flip: false, k: d.k, pop: 1, sq: 0, dy: 0, slideX: 0, lean: 0,
       arms: clonePose(POSES.dung), pose: 'dung', eyes: 'thuong', mouthRest: 'ngam', mouthOv: null, fakeTalk: false,
-      blink: 0, nextBlink: 20 + Math.floor(r() * 60), tieA: 0, tieV: 0, kicks: [], fx: [],
-      phase: r() * Math.PI * 2, last: { eyes: '', mouth: '', hL: '', hR: '' },
+      blinkF: -100, nextBlink: sec(0.5) + Math.floor(r() * sec(2)), tieA: 0, tieV: 0, kicks: [], fx: [],
+      phase: r() * Math.PI * 2, talkS: 0, last: { eyes: '', mouth: '', hL: '', hR: '' },
     };
     actors[id] = a;
     return a;
@@ -171,103 +208,137 @@
     const sx = a.flip ? -1 : 1;
     return [a.x + a.slideX + sx * 20 * a.k, a.y + a.dy + (-262 + a.u) * a.k];
   }
+  function blinkKey(a) {               // chớp mắt: nửa → nhắm → nhắm → nửa (khoảng 80 ms)
+    const age = F - a.blinkF;
+    if (age < 0 || age > 4 || ['x', 'nham'].includes(a.eyes)) return a.eyes;
+    if (age === 0 || age === 4) return a.eyes === 'thuong' ? 'half' : 'blink';
+    return 'blink';
+  }
   function drawActor(a) {
     a.g.setAttribute('display', a.vis ? 'inline' : 'none');
     a.fxg.setAttribute('display', a.vis ? 'inline' : 'none');
     if (!a.vis) return;
     const sx = a.flip ? -1 : 1, s = a.k * a.pop;
-    a.g.setAttribute('transform', `translate(${(a.x + a.slideX).toFixed(1)} ${(a.y + a.dy).toFixed(1)}) scale(${(s * sx).toFixed(4)} ${s.toFixed(4)})`);
-    const breath = Math.round(Math.sin(F / 48 * Math.PI * 2 + a.phase) * 2);
-    a.upper.setAttribute('transform', `translate(0 ${breath})`);
-    if (a.tie) a.tie.setAttribute('transform', `translate(4 -188) rotate(${a.tieA.toFixed(2)})`);
-    const ek = a.blink > 0 && !['x', 'nham'].includes(a.eyes) ? 'blink' : a.eyes;
+    const sqx = 1 + a.sq * 0.12, sqy = 1 - a.sq * 0.12;   // nén/giãn khi lấy đà và tiếp đất
+    a.g.setAttribute('transform', `translate(${f1(a.x + a.slideX)} ${f1(a.y + a.dy)}) scale(${f3(s * sx * sqx)} ${f3(s * sqy)})`);
+    const t = time() + a.phase;
+    const breath = Math.sin(t * Math.PI * 2 / 2.2) * 1.6;
+    const sway = Math.sin(t * Math.PI * 2 / 3.7) * 0.7 + a.lean;
+    a.upper.setAttribute('transform', `translate(0 ${f1(breath)}) rotate(${f3(sway)} 0 -118)`);
+    // đầu gật nhẹ theo giọng nói
+    const nod = a.talkS * (2.2 + Math.sin(t * 9) * 1.4), tilt = a.talkS * Math.sin(t * 3.1) * 2.2;
+    a.head.setAttribute('transform', `translate(0 ${f1(-nod)}) rotate(${f3(tilt)} 0 -192)`);
+    if (a.tie) a.tie.setAttribute('transform', `translate(4 -188) rotate(${f3(a.tieA - sway * 1.5)})`);
+    a.legPath.setAttribute('d', `M -9 ${a.hip} L -15 -16 M 9 ${a.hip} L 15 -16`);
+    const ek = blinkKey(a);
     if (ek !== a.last.eyes) { a.eyesG.innerHTML = eyeSVG(ek, E1) + eyeSVG(ek, E2); a.last.eyes = ek; }
     const mkey = mouthFor(a);
     if (mkey !== a.last.mouth) { a.mouthG.innerHTML = mouthSVG(mkey, MO); a.last.mouth = mkey; }
     for (const side of ['L', 'R']) {
       const p = a.arms[side], sh = SH[side];
-      a['arm' + side].setAttribute('points', `${sh[0]},${sh[1]} ${p.e[0].toFixed(1)},${p.e[1].toFixed(1)} ${p.h[0].toFixed(1)},${p.h[1].toFixed(1)}`);
+      a['arm' + side].setAttribute('points', `${sh[0]},${sh[1]} ${f1(p.e[0])},${f1(p.e[1])} ${f1(p.h[0])},${f1(p.h[1])}`);
       const ang = Math.atan2(p.h[1] - p.e[1], p.h[0] - p.e[0]) * 180 / Math.PI;
       const hg = a['hand' + side];
-      hg.setAttribute('transform', `translate(${p.h[0].toFixed(1)} ${p.h[1].toFixed(1)}) rotate(${ang.toFixed(1)})`);
+      hg.setAttribute('transform', `translate(${f1(p.h[0])} ${f1(p.h[1])}) rotate(${f1(ang)})`);
       if (a.last['h' + side] !== p.s) { hg.innerHTML = handSVG(p.s); a.last['h' + side] = p.s; }
     }
-    // hiệu ứng: đặt cạnh đầu, không lật theo nhân vật
     const [hx, hy] = headWorld(a);
-    a.fxg.setAttribute('transform', `translate(${(hx + (a.flip ? -150 * a.k : 0)).toFixed(1)} ${hy.toFixed(1)}) scale(${a.k}) translate(-20 262)`);
+    a.fxg.setAttribute('transform', `translate(${f1(hx + (a.flip ? -150 * a.k : 0))} ${f1(hy)}) scale(${a.k}) translate(-20 262)`);
   }
   function mouthFor(a) {
     if (a.mouthOv) return a.mouthOv;
-    let talking = false, amp = 0;
-    if (a.fakeTalk) { talking = true; amp = [0.5, 0.2, 0.8, 0.1, 0.6, 0.3][Math.floor(F / 3) % 6]; }
-    else if (a.id === speaker && ampAll) { amp = ampAll[F] || 0; talking = amp > 0.07; }
-    if (!talking) return a.mouthRest;
-    if (F - lastTalkF < 2 && a.id === speaker) return lastTalkShape;
-    const shape = amp < 0.3 ? 'he' : 'mo';
-    if (a.id === speaker) { lastTalkShape = shape; lastTalkF = F; }
-    return shape;
+    if (a.talkS < 0.07) return a.mouthRest;
+    return 'talk:' + (Math.round(clamp(a.talkS, 0, 1) * 12) / 12).toFixed(3);
   }
+  const TIE_W = 13, TIE_Z = 0.22;
   function stepActor(a) {
-    if (a.blink > 0) a.blink--;
-    else if (F >= a.nextBlink) { a.blink = 2; a.nextBlink = F + 48 + Math.floor(a.r() * 72); }
+    if (F >= a.nextBlink) { a.blinkF = F; a.nextBlink = F + sec(2) + Math.floor(a.r() * sec(3)); }
+    // độ mở miệng: bám nhanh khi to lên, nhả chậm khi nhỏ lại
+    let target = 0;
+    if (a.fakeTalk) target = 0.35 + 0.35 * Math.sin(time() * 17) * Math.sin(time() * 5.3);
+    else if (a.id === speaker) target = ampS;
+    a.talkS += (target - a.talkS) * (target > a.talkS ? 0.55 : 0.3);
+    // dây đánh dấu: lò xo tắt dần, tính theo giây nên không phụ thuộc số khung
     a.kicks = a.kicks.filter((kk) => { if (kk.f <= F) { a.tieV += kk.v; return false; } return true; });
-    a.tieV += -0.32 * a.tieA - 0.22 * a.tieV; a.tieA += a.tieV;
-    if (Math.abs(a.tieA) < 0.05 && Math.abs(a.tieV) < 0.05) { a.tieA = 0; a.tieV = 0; }
+    const dt = 1 / FPS;
+    const acc = -TIE_W * TIE_W * a.tieA - 2 * TIE_Z * TIE_W * a.tieV;
+    a.tieV += acc * dt; a.tieA += a.tieV * dt;
     a.fx = a.fx.filter((fx) => {
-      const age = F - fx.f0;
-      const POP = [0.45, 0.85, 1.1, 1.06, 1.0];
-      const sc = age < POP.length ? POP[age] : (age > fx.hold + 5 ? Math.max(0, 1 - (age - fx.hold - 5) / 3) : 1);
-      fx.el.setAttribute('transform', `translate(90 -340) scale(${sc}) translate(-90 340)`);
-      if (age > fx.hold + 8) { fx.el.remove(); return false; }
+      const age = F - fx.f0, popN = sec(0.28), outN = sec(0.2);
+      let sc = 1;
+      if (age < popN) sc = outBack(age / popN, 2.2);
+      else if (age > fx.hold) sc = 1 - inC(clamp((age - fx.hold) / outN, 0, 1));
+      const bob = Math.sin((age / FPS) * Math.PI * 2 * 1.2) * 4;
+      fx.el.setAttribute('transform', `translate(0 ${f1(bob)}) translate(90 -340) scale(${f3(Math.max(0, sc))}) translate(-90 340)`);
+      if (age > fx.hold + outN) { fx.el.remove(); return false; }
       return true;
     });
   }
 
   // ---------- Hành động nhân vật ----------
-  function setPose(a, name, n = 2) {
-    const to = POSES[name], from = clonePose(a.arms);
+  function setPose(a, name, dur = 0.3) {
+    const to = POSES[name];
+    const fromQ = { L: toPolar('L', a.arms.L), R: toPolar('R', a.arms.R) };
+    const toQ = { L: toPolar('L', to.L), R: toPolar('R', to.R) };
     a.book.setAttribute('display', name === 'cam-sach' ? 'inline' : 'none');
     a.pose = name;
-    tween(n, (t) => {
+    tween(sec(dur), (t) => {
+      const e = outBack(t, 1.15);      // vượt đích một chút rồi về: có lực, không robot
       for (const side of ['L', 'R']) {
-        const p = a.arms[side], f = from[side], b = to[side];
-        p.e = [lerp(f.e[0], b.e[0], t), lerp(f.e[1], b.e[1], t)];
-        p.h = [lerp(f.h[0], b.h[0], t), lerp(f.h[1], b.h[1], t)];
-        p.s = t >= 0.5 ? b.s : f.s;
+        const f = fromQ[side], b = toQ[side];
+        const q = {
+          a1: f.a1 + angDiff(f.a1, b.a1) * e, l1: lerp(f.l1, b.l1, e),
+          a2: f.a2 + angDiff(f.a2, b.a2) * e, l2: lerp(f.l2, b.l2, e),
+          s: t >= 0.45 ? b.s : f.s,
+        };
+        a.arms[side] = fromPolar(side, q);
       }
     });
-    a.kicks.push({ f: F + 2, v: 7 });
+    a.kicks.push({ f: F + sec(0.08), v: 110 });
+    const lean = { 'chi-nguoi-xem': 2.5, 'chia-tay': 1.2, 'khoanh-tay': -1.5, 'chong-cam': 1, 'an-mung': 0, 'nhun-vai': 0 }[name] || 0;
+    const l0 = a.lean;
+    tween(sec(0.35), (t) => { a.lean = lerp(l0, lean, inOut(t)); });
   }
   function jump(a, name) {
-    const keys = [4, 8, 10, -8, -4, 0];
-    tween(keys.length, (t) => { a.dy = keys[Math.min(keys.length - 1, Math.round(t * keys.length) - 1)]; });
-    later(3, () => setPose(a, name));
-    a.kicks.push({ f: F + 5, v: 9 });
+    // lấy đà (hạ + nén) → bật lên (giãn) → tiếp đất có nảy nhỏ
+    const n = sec(0.55);
+    tween(n, (t) => {
+      const s = t * 0.55;
+      if (s < 0.12) { const k = smooth(s / 0.12); a.dy = 12 * k; a.sq = 0.6 * k; }
+      else if (s < 0.27) { const k = (s - 0.12) / 0.15; a.dy = lerp(12, -16, outC(k)); a.sq = lerp(0.6, -0.5, k); }
+      else if (s < 0.42) { const k = (s - 0.27) / 0.15; a.dy = lerp(-16, 3, inOut(k)); a.sq = lerp(-0.5, 0.25, k); }
+      else { const k = (s - 0.42) / 0.13; a.dy = lerp(3, 0, outC(k)); a.sq = lerp(0.25, 0, outC(k)); }
+    });
+    later(sec(0.1), () => setPose(a, name, 0.26));
+    a.kicks.push({ f: F + sec(0.3), v: 160 });
   }
-  const POPK = [0, 0.45, 0.85, 1.1, 1.06, 1.0];
   function showActor(a, o) {
     const run = () => {
-      a.vis = true; a.x = o.x; if (o.flip !== undefined) a.flip = o.flip; a.dy = 0; a.slideX = 0;
+      a.vis = true; a.x = o.x; if (o.flip !== undefined) a.flip = o.flip; a.dy = 0; a.slideX = 0; a.sq = 0;
       const mode = o.mode || 'pop';
-      if (mode === 'pop') { tween(POPK.length, (t) => { a.pop = POPK[Math.min(POPK.length - 1, Math.round(t * POPK.length) - 1)]; }); a.pop = 0; playSfx('pop'); }
-      else if (mode === 'slideR' || mode === 'slideL') {
+      if (mode === 'pop') {
+        a.pop = 0; playSfx('pop');
+        tween(sec(0.36), (t) => { a.pop = outBack(t, 2.0); a.sq = Math.sin(t * Math.PI) * -0.35; });
+        a.kicks.push({ f: F + sec(0.2), v: 90 });
+      } else if (mode === 'slideR' || mode === 'slideL') {
         const from = mode === 'slideR' ? (W + 300 - o.x) : (-300 - o.x);
         a.slideX = from; a.pop = 1; playSfx('whoosh');
-        tween(9, (t) => { a.slideX = from * (1 - easeOut(t)); });
+        tween(sec(0.5), (t) => { a.slideX = from * (1 - outBack(t, 1.1)); a.lean = (mode === 'slideR' ? 1 : -1) * 6 * Math.sin(t * Math.PI) * (1 - t); });
+        a.kicks.push({ f: F + sec(0.4), v: 200 });
       } else a.pop = 1;
     };
-    if (o.delay) later(o.delay, run); else run();
+    if (o.delay) later(fr(o.delay), run); else run();
   }
   function hideActor(a, mode = 'pop') {
     if (!a.vis) return;
     if (mode === 'cut') { a.vis = false; a.fx.forEach((fx) => fx.el.remove()); a.fx = []; return; }
-    const keys = [1.06, 0.6, 0];
-    tween(3, (t) => { a.pop = keys[Math.min(2, Math.round(t * 3) - 1)]; if (t >= 1) a.vis = false; });
+    const p0 = a.pop;
+    tween(sec(0.22), (t) => { a.pop = p0 * (1 - inBack(t, 1.6)); if (t >= 1) { a.vis = false; a.pop = 1; } });
   }
-  function fxOn(a, name, hold = 36) {
+  function fxOn(a, name, hold24 = 36) {
     const el = mk('g', {}, a.fxg);
     el.innerHTML = FX_SVG[name];
-    a.fx.push({ el, f0: F, hold });
+    a.fx.push({ el, f0: F, hold: fr(hold24) });
     if (FX_SFX[name]) playSfx(FX_SFX[name]);
   }
 
@@ -275,8 +346,10 @@
   function placeItem(it) {
     const t = it.attach ? attachPos(it.attach) : [it.x, it.y];
     const s = it.s * it.pop;
-    it.el.setAttribute('transform', `translate(${t[0].toFixed(1)} ${(t[1] + it.ty).toFixed(1)}) scale(${(s * it.sx).toFixed(4)} ${s.toFixed(4)})`);
-    it.el.setAttribute('opacity', it.alpha.toFixed(3));
+    const age = (F - it.f0) / FPS;
+    const float = it.float ? Math.sin(age * Math.PI * 2 / 3 + it.id.length) * 5 : 0;   // đồ vật lơ lửng nhẹ
+    it.el.setAttribute('transform', `translate(${f1(t[0])} ${f1(t[1] + it.ty + float)}) rotate(${f3(it.rot)}) scale(${f3(s * it.sx)} ${f3(s)})`);
+    it.el.setAttribute('opacity', f3(it.alpha));
     it.el.setAttribute('display', it.vis ? 'inline' : 'none');
     if (it.dripF !== undefined && it.obj.setDrip) it.obj.setDrip(Math.max(0, (F - it.dripF) / FPS));
   }
@@ -288,26 +361,29 @@
     if (items[id]) items[id].el.remove();
     const el = mk('g', {}, L.props);
     el.appendChild(obj.el);
-    const it = { id, obj, el, x: o.x ?? W / 2, y: o.y ?? H / 2, s: o.s ?? 1, sx: 1, pop: 1, ty: 0, alpha: 1, vis: true, attach: o.attach };
+    const it = { id, obj, el, f0: F, x: o.x ?? W / 2, y: o.y ?? H / 2, s: o.s ?? 1, sx: 1, pop: 1, ty: 0, rot: 0, alpha: 1, vis: true, attach: o.attach, float: !o.attach };
     items[id] = it;
     enter(it, o.mode || 'pop');
     return it;
   }
   function enter(it, mode) {
-    if (mode === 'pop') { it.pop = 0; tween(POPK.length, (t) => { it.pop = POPK[Math.min(POPK.length - 1, Math.round(t * POPK.length) - 1)]; }); playSfx('pop'); }
-    else if (mode === 'dap') {
-      const keys = [-460, -300, -130, 0, -26, 0];
-      it.ty = keys[0];
-      tween(keys.length, (t) => { it.ty = keys[Math.min(keys.length - 1, Math.round(t * keys.length) - 1)]; });
-      later(3, () => { shake(9); playSfx('thud'); });
-    } else if (mode === 'fade') { it.alpha = 0; tween(10, (t) => { it.alpha = t; }); }
+    if (mode === 'pop') {
+      it.pop = 0; playSfx('pop');
+      tween(sec(0.38), (t) => { it.pop = outBack(t, 2.0); it.rot = (1 - outC(t)) * -6; });
+    } else if (mode === 'dap') {
+      // rơi xuống theo trọng lực, nảy hai nhịp
+      const n = sec(0.62);
+      it.ty = -520;
+      tween(n, (t) => { it.ty = -520 * (1 - outBounce(t)); });
+      later(Math.round(n / 2.75), () => { shake(9); playSfx('thud'); });
+    } else if (mode === 'fade') { it.alpha = 0; tween(sec(0.45), (t) => { it.alpha = inOut(t); }); }
   }
   function removeItem(id, mode = 'pop') {
     const it = items[id]; if (!it) return;
     delete items[id];
     if (mode === 'cut') { it.el.remove(); return; }
-    const keys = [1.06, 0.6, 0];
-    tween(3, (t) => { it.pop = keys[Math.min(2, Math.round(t * 3) - 1)]; placeItem(it); if (t >= 1) it.el.remove(); });
+    const p0 = it.pop;
+    tween(sec(0.24), (t) => { it.pop = p0 * (1 - inBack(t, 1.4)); it.alpha = 1 - inC(t); placeItem(it); if (t >= 1) it.el.remove(); });
   }
   function wrapPart(part) {
     if (part.__inner) return part.__inner;
@@ -317,7 +393,7 @@
     return inner;
   }
 
-  // ---------- Nền ----------
+  // ---------- Nền và chuyển cảnh ----------
   function getBg(name) {
     if (bgs[name]) return bgs[name];
     let obj;
@@ -329,42 +405,73 @@
     else if (name === 'end') obj = PROPS.endCard();
     const wrap = mk('g', { display: 'none' }, L.bg);
     wrap.appendChild(obj.el);
-    bgs[name] = { name, obj, el: wrap, x: 0, alpha: 1 };
+    bgs[name] = { name, obj, el: wrap, alpha: 1 };
     return bgs[name];
   }
-  function setBg(name, mode = 'cut') {
+  function setBg(name, mode) {
     const nb = getBg(name), old = curBg;
     if (old === nb) return;
-    L.bg.appendChild(nb.el);               // lên trên cùng của lớp nền
+    L.bg.appendChild(nb.el);
     nb.el.setAttribute('display', 'inline');
     curBg = nb;
-    const drop = () => { if (old && old !== curBg) old.el.setAttribute('display', 'none'); };
-    if (mode === 'slide') {
-      nb.x = W; playSfx('whoosh');
-      tween(10, (t) => { nb.x = W * (1 - easeOut(t)); if (t >= 1) drop(); });
-    } else if (mode === 'fade') {
-      nb.alpha = 0; tween(12, (t) => { nb.alpha = t; if (t >= 1) drop(); });
-    } else { nb.x = 0; nb.alpha = 1; drop(); }
+    if (mode === 'fade') {
+      nb.alpha = 0;
+      tween(sec(0.7), (t) => { nb.alpha = inOut(t); if (t >= 1 && old && old !== curBg) old.el.setAttribute('display', 'none'); });
+    } else { nb.alpha = 1; if (old) old.el.setAttribute('display', 'none'); }
   }
   function bgPart(name) { return curBg && curBg.obj.parts ? curBg.obj.parts[name] : null; }
+  // Tấm che quét ngang: che trong WIPE_IN khung, đổi cảnh lúc che kín, mở ra trong WIPE_OUT khung.
+  const WIPE_IN = sec(0.26), WIPE_HOLD = sec(0.05), WIPE_OUT = sec(0.3);
+  function buildWipe() {
+    const g = mk('g', { display: 'none' }, L.over);
+    const slant = 260;
+    mk('path', { d: `M ${-slant} 0 L ${W + slant} 0 L ${W} ${H} L ${-2 * slant} ${H} Z`, fill: '#FFF6E0' }, g);
+    mk('path', { d: `M ${W + slant} 0 L ${W + slant + 70} 0 L ${W + 70} ${H} L ${W} ${H} Z`, fill: '#F08A24' }, g);
+    mk('path', { d: `M ${W + slant + 70} 0 L ${W + slant + 100} 0 L ${W + 100} ${H} L ${W + 70} ${H} Z`, fill: '#2A9D8F' }, g);
+    mk('path', { d: `M ${-slant - 100} 0 L ${-slant - 70} 0 L ${-2 * slant - 70} ${H} L ${-2 * slant - 100} ${H} Z`, fill: '#2A9D8F' }, g);
+    mk('path', { d: `M ${-slant - 70} 0 L ${-slant} 0 L ${-2 * slant} ${H} L ${-2 * slant - 70} ${H} Z`, fill: '#F08A24' }, g);
+    // ba ô cửa sổ toa tàu chạy qua, gợi chuyến "tàu về tuổi thơ"
+    for (let k = 0; k < 3; k++) mk('rect', { x: 560 + k * 300, y: 420, width: 200, height: 150, rx: 28, fill: '#BFE6F5', stroke: INK, 'stroke-width': 8 }, g);
+    mk('rect', { x: 460, y: 640, width: 1000, height: 22, rx: 11, fill: INK }, g);
+    return g;
+  }
+  function wipeOffset(age) {          // vị trí tấm che theo tuổi (khung)
+    const span = W + 400;
+    if (age < WIPE_IN) return span * (1 - inOut(age / WIPE_IN));
+    if (age < WIPE_IN + WIPE_HOLD) return 0;
+    const t = (age - WIPE_IN - WIPE_HOLD) / WIPE_OUT;
+    return -span * inOut(clamp(t, 0, 1));
+  }
+  const covered = () => wipe && F - wipe.f0 >= WIPE_IN - 1 && F - wipe.f0 < WIPE_IN + WIPE_HOLD + 2;
 
   // ---------- Camera ----------
-  function shake(amp) { cam.shake = [1, -0.8, 0.6, -0.4, 0.2, 0].map((f) => [amp * f, amp * f * 0.4]); }
-  function camSet(s, fx, fy) {
+  function shake(amp) { cam.shakeF = F; cam.shakeA = amp; }
+  function camSet(s, fx, fy, dur) {
     const hw = W / 2 / s, hh = H / 2 / s;
-    cam.s = s; cam.fx = clamp(fx, hw, W - hw); cam.fy = clamp(fy, hh, H - hh);
+    const to = { s, fx: clamp(fx, hw, W - hw), fy: clamp(fy, hh, H - hh) };
+    if (covered() || !dur) { Object.assign(cam, to); return; }
+    const from = { s: cam.s, fx: cam.fx, fy: cam.fy };
+    tween(sec(dur), (t) => {
+      const e = s > from.s ? outC(t) : inOut(t);
+      cam.s = lerp(from.s, to.s, e); cam.fx = lerp(from.fx, to.fx, e); cam.fy = lerp(from.fy, to.fy, e);
+    });
   }
 
-  // ---------- Bảng hành động ----------
+  // ---------- Bảng hành động (đơn vị khung trong kịch bản vẫn là 24 khung/giây) ----------
   const ACT = {
+    wipeStart: () => { wipe = { f0: F }; playSfx('whoosh'); },
     bg: (name, mode) => setBg(name, mode),
-    show: (id, o) => showActor(actor(id), o),
+    show: (id, o) => showActor(actor(id), covered() ? { ...o, mode: 'cut' } : o),
     hide: (id, mode) => hideActor(actor(id), mode),
-    move: (id, x, n = 8) => { const a = actor(id); const x0 = a.x; if (!n) a.x = x; else tween(n, (t) => { a.x = lerp(x0, x, ease(t)); }); },
+    move: (id, x, n = 8) => {
+      const a = actor(id); const x0 = a.x;
+      if (!n || covered()) { a.x = x; return; }
+      tween(fr(n * 1.6), (t) => { a.x = lerp(x0, x, inOut(t)); a.dy = -Math.abs(Math.sin(t * Math.PI * 3)) * 9; if (t >= 1) a.dy = 0; });
+    },
     flip: (id, v) => { actor(id).flip = v; },
     pose: (id, name) => setPose(actor(id), name),
     jump: (id, name) => jump(actor(id), name),
-    eyes: (id, e) => { actor(id).eyes = e; },
+    eyes: (id, e) => { const a = actor(id); if (a.eyes !== e) { a.eyes = e; if (F - a.blinkF > 10) a.blinkF = F - 1; } },
     mouth: (id, m) => { actor(id).mouthOv = m; },
     talk: (id, v) => { actor(id).fakeTalk = v; },
     speaker: (id) => { speaker = id; },
@@ -374,63 +481,77 @@
       if (builder === 'chapters') obj.parts.boxes.forEach((p) => p.setAttribute('display', 'none'));
       if (builder === 'checklist') obj.parts.rows.forEach((p) => p.setAttribute('display', 'none'));
       if (builder === 'ticket') for (let k = 0; k < stamped; k++) obj.parts.stamps[k].setAttribute('display', 'inline');
-      addItem(id, obj, o);
+      addItem(id, obj, covered() ? { ...o, mode: 'cut' } : o);
     },
     text: (id, str, o) => {
       const obj = o.style ? PROPS.tag(str, o.style) : PROPS.bigText(str, { size: o.size || 120, color: o.color });
       addItem(id, obj, o);
     },
-    unprop: (id, mode) => removeItem(id, mode),
+    unprop: (id, mode) => removeItem(id, covered() ? 'cut' : mode),
     stamp: (id, n) => {
       const it = items[id]; if (!it) return;
       stamped = Math.max(stamped, n + 1);
       const st = it.obj.parts.stamps[n], inner = it.obj.parts.stampInner ? it.obj.parts.stampInner[n] : wrapPart(st);
       st.setAttribute('display', 'inline');
-      const keys = [2.4, 1.5, 0.9, 1.05, 1];
-      tween(keys.length, (t) => { inner.setAttribute('transform', `scale(${keys[Math.min(keys.length - 1, Math.round(t * keys.length) - 1)]})`); });
-      later(2, () => { playSfx('stamp'); shake(10); });
+      const base = inner.getAttribute('data-base') ?? (inner.getAttribute('transform') || '');
+      inner.setAttribute('data-base', base);
+      const n2 = sec(0.3), hit = Math.round(n2 * 0.4);
+      tween(n2, (t) => {
+        const sc = t < 0.4 ? lerp(2.6, 0.92, inC(t / 0.4)) : lerp(0.92, 1, outBack((t - 0.4) / 0.6, 2));
+        inner.setAttribute('transform', `${base} scale(${f3(sc)})`);
+        inner.setAttribute('opacity', f3(clamp(t * 4, 0, 1)));
+      });
+      later(hit, () => { playSfx('stamp'); shake(11); });
     },
     flipcard: (id, side) => {
       const it = items[id]; if (!it) return;
       playSfx('flip');
-      tween(4, (t) => { it.sx = 1 - t; if (t >= 1) it.obj.setFace(side); });
-      later(4, () => tween(4, (t) => { it.sx = t; }));
+      const h = sec(0.17);
+      tween(h, (t) => { it.sx = 1 - inC(t); it.ty = -18 * Math.sin(t * Math.PI / 2); if (t >= 1) it.obj.setFace(side); });
+      later(h, () => tween(sec(0.24), (t) => { it.sx = outBack(t, 1.6); it.ty = -18 * (1 - outC(t)); }));
     },
     tilt: (id, deg, n) => {
       const it = items[id]; if (!it) return;
       const from = it.tilt || 0; it.tilt = deg;
-      tween(n, (t) => it.obj.setTilt(lerp(from, deg, ease(t))));
+      tween(fr(n * 1.4), (t) => it.obj.setTilt(lerp(from, deg, outBack(t, 1.4))));
     },
-    progress: (id, method, a, b, n) => { const it = items[id]; if (!it) return; tween(n, (t) => it.obj[method](lerp(a, b, t))); },
+    progress: (id, method, a, b, n) => { const it = items[id]; if (!it) return; tween(fr(n), (t) => it.obj[method](lerp(a, b, inOut(t)))); },
     reveal: (id, partName, idx, mode, delay = 0) => {
-      later(delay, () => {
+      later(fr(delay), () => {
         const it = items[id]; if (!it) return;
         const part = it.obj.parts[partName][idx], inner = wrapPart(part);
         part.setAttribute('display', 'inline'); playSfx('pop');
-        tween(6, (t) => { inner.setAttribute('transform', `translate(${(-40 * (1 - easeOut(t))).toFixed(1)} 0)`); inner.setAttribute('opacity', t.toFixed(3)); });
+        tween(sec(0.4), (t) => {
+          inner.setAttribute('transform', `translate(${f1(-50 * (1 - outBack(t, 1.3)))} ${f1(-14 * (1 - outC(t)))})`);
+          inner.setAttribute('opacity', f3(clamp(t * 2.2, 0, 1)));
+        });
       });
     },
     sign: (id, actorId, text) => {
       const obj = PROPS.sign(text);
-      later(3, () => addItem(id, obj, { mode: 'pop', s: 0.95, attach: { actor: actorId, lx: 60, ly: -270 } }));
+      later(sec(0.18), () => {
+        const it = addItem(id, obj, { mode: 'pop', s: 0.95, attach: { actor: actorId, lx: 60, ly: -270 } });
+        it.wave = true;
+      });
     },
     drip: (id) => { const it = items[id]; if (it) it.dripF = F; },
-    glow: (op, n) => { const p = bgPart('glowLeft'); if (!p) return; const a0 = +(p.getAttribute('opacity') || 0); tween(n, (t) => p.setAttribute('opacity', lerp(a0, op, t))); },
-    dim: (op, n) => { const p = bgPart('dimRight'); if (!p) return; const a0 = +(p.getAttribute('opacity') || 0); tween(n, (t) => p.setAttribute('opacity', lerp(a0, op, t))); },
+    glow: (op, n) => { const p = bgPart('glowLeft'); if (!p) return; const a0 = +(p.getAttribute('opacity') || 0); tween(fr(n * 1.5), (t) => p.setAttribute('opacity', f3(lerp(a0, op, inOut(t))))); },
+    dim: (op, n) => { const p = bgPart('dimRight'); if (!p) return; const a0 = +(p.getAttribute('opacity') || 0); tween(fr(n * 1.5), (t) => p.setAttribute('opacity', f3(lerp(a0, op, inOut(t))))); },
     cam: (kind, target, zoom) => {
-      if (kind === 'out') camSet(1, W / 2, H / 2);
-      else if (kind === 'in') { const a = actor(target); const [hx, hy] = headWorld(a); camSet(zoom || 1.75, hx, hy + 40); }
+      if (kind === 'out') camSet(1, W / 2, H / 2, 0.42);
+      else if (kind === 'in') { const a = actor(target); const [hx, hy] = headWorld(a); camSet(zoom || 1.75, hx, hy + 40, 0.3); }
       else if (kind === 'row') {
         const it = items[target]; if (!it) return;
         const p = it.obj.parts; const lx = (p.rowX || -200) + 160, ly = p.rowY[zoom || 0];
-        camSet(1.9, it.x + it.s * lx, it.y + it.s * ly);
+        camSet(1.9, it.x + it.s * lx, it.y + it.s * ly, 0.4);
       }
     },
     shake: (amp) => shake(amp),
     endcard: () => {
       setBg('end', 'fade');
-      const a = actor('mot'); tween(12, (t) => { a.x = lerp(560, 450, ease(t)); });
-      for (const id in items) removeItem(id, 'cut');
+      const a = actor('mot'); const x0 = a.x;
+      tween(sec(0.8), (t) => { a.x = lerp(x0, 450, inOut(t)); });
+      for (const id in items) removeItem(id);
       subEl.style.opacity = '0';
     },
   };
@@ -448,13 +569,16 @@
     return 0;
   }
   function compile(script, timing) {
-    const byI = {}; timing.lines.forEach((l) => { byI[l.i] = l; });
+    const byI = {};
+    timing.lines.forEach((l) => {
+      byI[l.i] = { start: Math.round(l.start * R24), frames: Math.round(l.frames * R24), wordStarts: l.wordStarts.map((w) => Math.round(w * R24)) };
+    });
+    amp24 = new Float32Array(timing.totalFrames + 2);
+    for (const l of timing.lines) for (let k = 0; k < l.frames; k++) amp24[l.start + k] = l.amp[k] || 0;
     const ev = [];
-    ampAll = new Float32Array(timing.totalFrames + 2);
-    for (const l of timing.lines) for (let k = 0; k < l.frames; k++) ampAll[l.start + k] = l.amp[k] || 0;
     script.forEach((s) => {
       const l = byI[s.i];
-      (s.a || []).forEach(([trig, name, ...args], order) => {
+      (s.a || []).forEach(([trig, name, ...args]) => {
         let f = l.start;
         if (trig === 'e') f = l.start + l.frames;
         else if (typeof trig === 'number') f = l.start + (l.wordStarts[trig] || 0);
@@ -464,13 +588,21 @@
       if (s.t) buildSubs(s, l);
     });
     ev.sort((a, b) => a.f - b.f || a.k - b.k);
-    return ev;
+    // Mỗi lần đổi nền (trừ nền đầu tiên và kiểu 'fade'), chèn tấm che bắt đầu trước đó WIPE_IN khung
+    // để lúc đổi cảnh màn hình đã được che kín.
+    let cur = null;
+    const extra = [];
+    for (const e of ev) {
+      if (e.name !== 'bg') continue;
+      const [name, mode] = e.args;
+      if (cur && name !== cur && mode !== 'fade') extra.push({ f: Math.max(0, e.f - WIPE_IN), k: -1, name: 'wipeStart', args: [] });
+      cur = name;
+    }
+    return ev.concat(extra).sort((a, b) => a.f - b.f || a.k - b.k);
   }
   function buildSubs(s, l) {
     const words = s.t.split(/\s+/);
-    // chia câu dài thành các mảnh ≤ 58 ký tự, ưu tiên cắt sau dấu câu
     const chunks = []; let cur = [];
-    const len = (arr) => arr.join(' ').length;
     words.forEach((w, i) => {
       cur.push(i);
       const txt = cur.map((j) => words[j]).join(' ');
@@ -480,7 +612,7 @@
     if (cur.length) chunks.push(cur);
     chunks.forEach((c, k) => {
       const start = l.start + (l.wordStarts[c[0]] || 0);
-      const end = k + 1 < chunks.length ? l.start + (l.wordStarts[chunks[k + 1][0]] || l.frames) : l.start + l.frames + 6;
+      const end = k + 1 < chunks.length ? l.start + (l.wordStarts[chunks[k + 1][0]] || l.frames) : l.start + l.frames + sec(0.25);
       subChunks.push({ start, end, text: c.map((j) => words[j]).join(' ') });
     });
   }
@@ -500,14 +632,29 @@
       tw.fn(t);
       return t < 1;
     });
+    const raw = ampAt(F);
+    ampS += (raw - ampS) * (raw > ampS ? 0.6 : 0.25);
     for (const id in actors) stepActor(actors[id]);
   }
   function draw() {
     for (const id in actors) drawActor(actors[id]);
-    for (const id in items) placeItem(items[id]);
-    for (const n in bgs) { const b = bgs[n]; b.el.setAttribute('transform', `translate(${b.x.toFixed(1)} 0)`); b.el.setAttribute('opacity', b.alpha); }
-    const sh = cam.shake.length ? cam.shake.shift() : [0, 0];
-    L.cam.setAttribute('transform', `translate(${W / 2 + sh[0]} ${H / 2 + sh[1]}) scale(${cam.s}) translate(${-cam.fx} ${-cam.fy})`);
+    for (const id in items) {
+      const it = items[id];
+      if (it.wave) it.rot = Math.sin(((F - it.f0) / FPS) * Math.PI * 2 * 1.4) * 5;   // biển phản đối lắc lư
+      placeItem(it);
+    }
+    for (const n in bgs) bgs[n].el.setAttribute('opacity', f3(bgs[n].alpha));
+    let sx = 0, sy = 0;
+    if (cam.shakeF >= 0) {
+      const t = (F - cam.shakeF) / FPS;
+      if (t < 0.5) { const d = cam.shakeA * Math.exp(-t * 9); sx = d * Math.sin(t * 2 * Math.PI * 11); sy = d * 0.5 * Math.cos(t * 2 * Math.PI * 13); }
+    }
+    L.cam.setAttribute('transform', `translate(${f1(W / 2 + sx)} ${f1(H / 2 + sy)}) scale(${f3(cam.s)}) translate(${f1(-cam.fx)} ${f1(-cam.fy)})`);
+    if (wipe) {
+      const age = F - wipe.f0;
+      if (age > WIPE_IN + WIPE_HOLD + WIPE_OUT) { wipe = null; L.wipe.setAttribute('display', 'none'); }
+      else { L.wipe.setAttribute('display', 'inline'); L.wipe.setAttribute('transform', `translate(${f1(wipeOffset(age))} 0)`); }
+    }
     const sub = subChunks.find((c) => F >= c.start && F < c.end);
     const txt = sub ? sub.text : '';
     if (subEl.textContent !== txt) subEl.textContent = txt;
@@ -515,13 +662,16 @@
   }
 
   window.ENGINE = {
+    FPS,
     init(timing) {
       const svg = document.getElementById('stage');
       L.cam = mk('g', {}, svg);
       L.bg = mk('g', {}, L.cam); L.props = mk('g', {}, L.cam); L.actors = mk('g', {}, L.cam); L.fx = mk('g', {}, L.cam);
+      L.over = mk('g', {}, svg);
+      L.wipe = buildWipe();
       subEl = document.getElementById('sub');
       events = compile(window.SCRIPT, timing);
-      this.totalFrames = timing.totalFrames;
+      this.totalFrames = Math.ceil(timing.totalFrames * R24);
     },
     simTo(n) { while (F < n) step(); draw(); return F; },
     frame() { return F; },

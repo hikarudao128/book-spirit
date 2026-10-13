@@ -10,8 +10,8 @@ const { chromium } = await import(path.join(process.env.PW_ROOT || '/opt/node22/
 });
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const timing = JSON.parse(fs.readFileSync(path.join(here, 'build/timing.json'), 'utf8'));
-const total = timing.totalFrames;
-const from = +arg('from', 0), to = +arg('to', total), workers = +arg('workers', 4);
+let total = 0;
+const workers = +arg('workers', 4);
 const stills = arg('stills', '');
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 
@@ -21,7 +21,7 @@ async function openPage() {
   page.on('pageerror', (e) => console.log('[pageerror]', e.message));
   await page.goto('file://' + path.join(here, 'engine.html'));
   await page.evaluate(() => document.fonts.ready);
-  await page.evaluate((t) => window.ENGINE.init(t), timing);
+  total = await page.evaluate((t) => { window.ENGINE.init(t); return window.ENGINE.totalFrames; }, timing);
   return page;
 }
 
@@ -36,8 +36,11 @@ if (stills) {
 }
 
 // Lượt 1: mô phỏng toàn bộ để lấy danh sách hiệu ứng âm thanh
+const FPS = 60;
+let from = 0, to = 0;
 {
   const page = await openPage();
+  from = +arg('from', 0); to = +arg('to', total);
   await page.evaluate((n) => window.ENGINE.simTo(n), total - 1);
   const ev = await page.evaluate(() => window.ENGINE.sfxEvents());
   fs.writeFileSync(path.join(here, 'build/sfx_events.json'), JSON.stringify(ev));
@@ -55,13 +58,13 @@ for (let w = 0; w < workers; w++) {
   jobs.push((async () => {
     const page = await openPage();
     const out = path.join(segDir, `seg${w}.mp4`);
-    const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', '24', '-c:v', 'mjpeg', '-i', '-',
-      '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', '-pix_fmt', 'yuv420p', '-r', '24', out], { stdio: ['pipe', 'inherit', 'inherit'] });
+    const ff = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
+      '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', '-pix_fmt', 'yuv420p', '-r', String(FPS), out], { stdio: ['pipe', 'inherit', 'inherit'] });
     for (let f = a; f < b; f++) {
       await page.evaluate((n) => window.ENGINE.simTo(n), f);
       const buf = await page.screenshot({ type: 'jpeg', quality: 92 });
       if (!ff.stdin.write(buf)) await new Promise((r) => ff.stdin.once('drain', r));
-      if (w === 0 && (f - a) % 240 === 0) console.log(`worker0 ${f - a}/${b - a} frames, ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+      if (w === 0 && (f - a) % 600 === 0) console.log(`worker0 ${f - a}/${b - a} frames, ${((Date.now() - t0) / 1000).toFixed(0)}s`);
     }
     ff.stdin.end();
     await new Promise((r) => ff.on('close', r));

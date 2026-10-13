@@ -1,6 +1,6 @@
 # Video: Cho tôi xin một vé đi tuổi thơ
 
-Video review 6:54, 1080p, 24 khung/giây, dựng hoàn toàn bằng code từ kịch bản
+Video review 6:54, 1080p, 60 khung/giây, dựng hoàn toàn bằng code từ kịch bản
 [`../../reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video.md`](../../reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video.md).
 
 | File | Vai trò |
@@ -18,7 +18,7 @@ Video review 6:54, 1080p, 24 khung/giây, dựng hoàn toàn bằng code từ k�
 node -e "require('./script.js');require('fs').writeFileSync('build/script.json',JSON.stringify(SCRIPT.map(s=>s.t?{i:s.i,text:s.t}:{i:s.i,text:null,beat:s.beat})))"
 python3 build_audio.py build/script.json      # chỉ gọi TTS lại cho câu đã đổi
 python3 sfx.py
-node render.mjs --workers 4                   # ~7 phút
+node render.mjs --workers 4                   # ~15–20 phút ở 60 khung/giây
 python3 mix.py build/narration.wav build/sfx_events.json build/final_audio.wav
 bash mux.sh build/video.mp4 build/final_audio.wav out/ve-di-tuoi-tho.mp4
 ```

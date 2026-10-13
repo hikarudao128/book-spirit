@@ -10,7 +10,7 @@
 (function (root) {
   const A = 560, XOM = 360;                       // vị trí Mọt ở nền trắng / ở xóm
   const KIDS = [['mui', 1010], ['haico', 1220], ['tisun', 1440], ['tun', 1640]];
-  const TK = { x: 1320, y: 470, s: 1 }, TKC = { x: 960, y: 480, s: 1.3 };
+  const TK = { x: 1320, y: 470, s: 1 }, TKC = { x: 1250, y: 480, s: 1.15 };
   const R = { x: 1330, y: 470 };                  // vùng hình minh họa bên phải
   const showKids = (t0 = 0) => KIDS.map(([id, x], k) => [t0, 'show', id, { x, flip: true, mode: 'pop', delay: k * 3 }]);
   const hideKids = (t = 0) => KIDS.map(([id]) => [t, 'hide', id, 'cut']);
