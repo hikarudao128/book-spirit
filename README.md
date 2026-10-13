@@ -10,4 +10,11 @@ Tài liệu và công cụ để viết review sách.
 - [`docs/demo/nguoi-que-animation.html`](docs/demo/nguoi-que-animation.html): demo tương tác (xem từng kỹ thuật, tự ghép cue, phát kịch bản mẫu). Bản đã xuất bản: https://claude.ai/artifact/Xys1zde9EpEqLPS2uN7sW4
 - [`templates/kich-ban-mau-nguoi-que.md`](templates/kich-ban-mau-nguoi-que.md): kịch bản mẫu review *Thói quen nguyên tử* đã đánh dấu cue đầy đủ.
 - [`templates/storyboard-video-review-sach.md`](templates/storyboard-video-review-sach.md): template storyboard cho video review sách.
+
+Các bài review:
+
+- [`reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video.md`](reviews/cho-toi-xin-mot-ve-di-tuoi-tho/kich-ban-video.md): kịch bản video review *Cho tôi xin một vé đi tuổi thơ* (Nguyễn Nhật Ánh), đã đánh dấu cue người que.
+
+Nguồn:
+
 - [`sources/transcripts/`](sources/transcripts/): transcript gốc của các video đã phân tích (phụ đề tự động tiếng Việt của YouTube).
