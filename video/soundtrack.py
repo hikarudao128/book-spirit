@@ -10,12 +10,10 @@ import numpy as np
 
 SR = 44100
 AUDIO_DIR = Path(__file__).resolve().parent / "audio"
-TEMPO = 0.92  # đọc chậm lại một chút cho trầm, thong thả
-# gTTS tiếng Việt chỉ có giọng nữ. Để ra giọng nam trầm, ấm của người kể chuyện:
-# hạ cả âm sắc (formant) 12% bằng asetrate, rồi hạ thêm cao độ 30% mà giữ nguyên formant
-# bằng rubberband -> cao độ còn khoảng 130 Hz, vẫn rõ chữ (đã thử bằng Whisper).
-FORMANT = 0.88
-PITCH = 0.70
+# Giọng vui tươi, tự nhiên: giữ giọng gốc của gTTS (ít xử lý = ít "máy"),
+# đọc nhanh hơn một chút và nâng cao độ ~1 nốt, giữ nguyên âm sắc.
+TEMPO = 1.04
+PITCH = 1.06
 rng = np.random.default_rng(7)
 
 
@@ -32,14 +30,14 @@ def narration_path(i: int, text: str) -> Path:
 
 
 def load_voice(path: Path) -> np.ndarray:
-    """Giải mã, đổi sang giọng nam trầm, cắt im lặng hai đầu, EQ ấm.
+    """Giải mã, nâng nhẹ cao độ cho tươi, cắt im lặng hai đầu, EQ sáng.
 
-    Không thêm vang hay nén: giọng review nên khô, gần mic, và hai bước đó làm mờ chữ.
+    Không thêm vang hay nén: giọng khô, gần mic nghe tự nhiên và rõ chữ hơn.
     """
-    af = (f"aresample=24000,asetrate=24000*{FORMANT},aresample=24000,"
-          f"rubberband=pitch={PITCH}:tempo={TEMPO / FORMANT:.4f}:formant=preserved:pitchq=quality,"
-          "highpass=f=70,equalizer=f=160:t=q:w=1:g=3,equalizer=f=3000:t=q:w=1.5:g=1.5,"
-          "highshelf=f=7000:g=-3,"
+    af = (f"aresample=24000,"
+          f"rubberband=pitch={PITCH}:tempo={TEMPO}:formant=preserved:pitchq=quality,"
+          "highpass=f=90,equalizer=f=250:t=q:w=1:g=-1.5,equalizer=f=3500:t=q:w=1.5:g=2,"
+          "highshelf=f=9000:g=-1,"
           "silenceremove=start_periods=1:start_threshold=-45dB,"
           "areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
           "loudnorm=I=-16:TP=-2")
@@ -121,29 +119,68 @@ def place(dst: np.ndarray, src: np.ndarray, at: float, gain: float = 1.0) -> Non
 
 # ---------- nhạc nền ----------
 
+def pluck(midi: int, sec: float, vel: float = 1.0) -> np.ndarray:
+    """Tiếng dây gảy kiểu ukulele (Karplus-Strong)."""
+    n = int(sec * SR)
+    period = max(2, int(SR / note_freq(midi)))
+    buf = rng.uniform(-1, 1, period)
+    buf = np.convolve(buf, np.ones(4) / 4, mode="same")  # bớt chói lúc gảy
+    out = np.empty(n)
+    for i in range(n):
+        j = i % period
+        out[i] = buf[j]
+        buf[j] = 0.996 * 0.5 * (buf[j] + buf[(j + 1) % period])
+    return vel * out
+
+
+def shaker(vel: float) -> np.ndarray:
+    n = int(0.09 * SR)
+    return vel * bandnoise(0.09, 5000, 11000) * env_ad(n, 0.004, 0.025)
+
+
 def music(total: float) -> np.ndarray:
-    """Vòng hòa âm Fmaj7 – Em7 – Dm7 – Cmaj7, rải nốt chậm ~66 bpm."""
+    """Nhạc vui tươi: vòng C – G – Am – F, ukulele gảy nhịp nảy ~92 bpm, nền dây, tiếng lắc."""
     out = np.zeros(int(total * SR))
-    beat = 60 / 66
+    beat = 60 / 92
     bar = 4 * beat
     chords = [
-        ([53, 57, 60, 64], [65, 69, 72, 76, 72, 69]),  # Fmaj7
-        ([52, 55, 59, 62], [64, 67, 71, 74, 71, 67]),  # Em7
-        ([50, 53, 57, 60], [62, 65, 69, 72, 69, 65]),  # Dm7
-        ([48, 52, 55, 59], [60, 64, 67, 71, 74, 71]),  # Cmaj7
+        ([48, 55, 64], [60, 64, 67, 72]),  # C
+        ([43, 55, 62], [59, 62, 67, 71]),  # G
+        ([45, 57, 64], [57, 60, 64, 69]),  # Am
+        ([41, 57, 65], [57, 60, 65, 69]),  # F
     ]
+    # nhịp gảy (đơn vị: phách) kiểu "đập – nảy"
+    strum = [0, 1, 1.5, 2.5, 3, 3.5]
+    cache: dict[tuple[int, int], np.ndarray] = {}
+
+    def pl(m: int, dur: float) -> np.ndarray:
+        key = (m, int(dur * 10))
+        if key not in cache:
+            cache[key] = pluck(m, dur)
+        return cache[key]
+
     t, k = 0.0, 0
-    while t < total:
-        low, arp = chords[k % len(chords)]
-        place(out, pad(low, bar + 1.5), t, 0.22)
-        place(out, piano(low[0] - 12, 4.0, 0.55), t)
-        for j, m in enumerate(arp):
-            place(out, piano(m, 3.0, 0.32 if j else 0.42), t + j * (bar / len(arp)) + 0.02 * j)
+    while t < total - 3.0:  # chừa chỗ cho hợp âm kết
+        low, high = chords[k % len(chords)]
+        place(out, pad(low, bar + 1.0), t, 0.10)
+        place(out, piano(low[0], 2.0, 0.35), t)
+        place(out, piano(low[0], 1.5, 0.22), t + 2 * beat)
+        for s_i, b in enumerate(strum):
+            vel = 0.30 if b == int(b) else 0.20
+            for q, m in enumerate(high):  # quét dây lệch nhau vài ms như gảy thật
+                place(out, pl(m, 1.2), t + b * beat + q * 0.012, vel)
+        # giai điệu chuông nhẹ ở phách 1 và 3 của mỗi ô nhịp chẵn
+        if k % 2 == 1:
+            place(out, piano(high[-1] + 12, 1.5, 0.18), t)
+            place(out, piano(high[-2] + 12, 1.5, 0.14), t + 2 * beat)
+        for h in range(8):
+            place(out, shaker(0.08 if h % 2 else 0.04), t + h * beat / 2)
         t += bar
         k += 1
-    # nốt ngân cuối trên tiêu đề
-    place(out, piano(72, 6.0, 0.5), total - 3.2)
-    place(out, piano(79, 6.0, 0.3), total - 3.2)
+    # kết: hợp âm C ngân trên tiêu đề
+    for m in (60, 64, 67, 72, 76):
+        place(out, pluck(m, 3.0, 0.3), total - 3.0 + (m - 60) * 0.004)
+        place(out, piano(m + 12, 4.0, 0.12), total - 3.0)
     return out / (np.abs(out).max() + 1e-9)
 
 
