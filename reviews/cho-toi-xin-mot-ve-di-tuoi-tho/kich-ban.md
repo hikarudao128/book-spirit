@@ -14,7 +14,7 @@ Chỗ [LĂNG KÍNH …]: thay bằng trải nghiệm thật của bạn.
 | **Câu trả lời (1 câu)** | Vì đây là sách viết về trẻ con nhưng nói chuyện người lớn. Đổi lại, cốt truyện mỏng và giọng kể đôi khi lên lớp. |
 | **Tiêu đề** | Sách thiếu nhi mà người lớn đọc mới thấm? \| Review sách: Cho tôi xin một vé đi tuổi thơ |
 | **Chữ trên thumbnail** | TRẺ CON KHÔNG HIỂU? |
-| **Thời lượng mục tiêu** | ~9 phút · ~2.300 chữ |
+| **Thời lượng mục tiêu** | ~7–8 phút · ~1.800 chữ (phần viết sẵn ~1.300 chữ, cộng trích dẫn, lăng kính, spoil) |
 | **Sách** | Cho tôi xin một vé đi tuổi thơ · Nguyễn Nhật Ánh · NXB Trẻ, 2008 · [số trang] · [giá bìa] |
 | **Minh bạch** | [Tự mua / được tặng] |
 
