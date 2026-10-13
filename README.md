@@ -8,3 +8,4 @@ Tài liệu và công cụ để viết review sách.
 - [`sources/transcripts/`](sources/transcripts/): transcript gốc của 5 video (phụ đề tự động tiếng Việt của YouTube).
 - [`kich-ban/`](kich-ban/): kịch bản video review theo từng cảnh, dựng theo phương pháp trên.
   - [`cho-toi-xin-mot-ve-di-tuoi-tho.md`](kich-ban/cho-toi-xin-mot-ve-di-tuoi-tho.md): *Cho tôi xin một vé đi tuổi thơ* (Nguyễn Nhật Ánh), video ~10 phút.
+  - [`cho-toi-xin-mot-ve-di-tuoi-tho-prompts.md`](kich-ban/cho-toi-xin-mot-ve-di-tuoi-tho-prompts.md): prompt tạo hình ảnh / video AI cho từng cảnh của kịch bản trên.
