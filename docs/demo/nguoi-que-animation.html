@@ -1,0 +1,676 @@
+<title>Xưởng người que</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Be+Vietnam+Pro:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: bàn dựng phim. Sân khấu 16:9 + phụ đề + dòng cue bên trái, bảng điều khiển bên phải; xếp một cột trên điện thoại. */
+:root {
+  --bg: #EDF1F5;
+  --panel: #FFFFFF;
+  --fg: #18202B;
+  --muted: #5A6676;
+  --line: #D3DAE3;
+  --chip: #E4EAF1;
+  --accent: #D9661A;      /* cam của dây đánh dấu sách */
+  --accent-soft: #FBE6D6;
+  --teal: #1F8A7E;
+  --stage: #FFFFFF;       /* khung video luôn nền trắng, giống nền A */
+  --ink: #1D1D1F;
+  --font-display: "Baloo 2", "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161D; --panel: #18202A; --fg: #E7ECF2; --muted: #9AA6B5; --line: #2A3542;
+    --chip: #222C38; --accent: #F28C38; --accent-soft: #3A2716; --teal: #3FB8A9;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161D; --panel: #18202A; --fg: #E7ECF2; --muted: #9AA6B5; --line: #2A3542;
+  --chip: #222C38; --accent: #F28C38; --accent-soft: #3A2716; --teal: #3FB8A9;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 40px; }
+header { display: grid; gap: 4px; margin-block-end: 18px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(30px, 4vw, 42px); line-height: 1.05; margin: 0; text-wrap: balance; }
+h1 span { color: var(--accent); }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; line-height: 1.2; }
+.studio { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+@media (max-width: 980px) {
+  .studio { grid-template-columns: minmax(0, 1fr); }
+  .stage-wrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; box-shadow: 0 6px 18px rgba(0, 0, 0, .12); }
+}
+.col { display: grid; gap: 14px; min-width: 0; }
+.stage-wrap { background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+#stage { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; max-width: 100%; }
+.sub { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; min-height: 92px; }
+#cap { font-size: 19px; font-weight: 500; min-height: 1.6em; text-wrap: balance; }
+#cap:empty::before { content: "Phụ đề hiện ở đây khi nhân vật nói."; color: var(--muted); font-weight: 400; font-size: 15px; }
+.cue { font-family: var(--font-mono); font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 26px; }
+.cue .k { background: var(--chip); border-radius: 5px; padding: 2px 7px; }
+.cue .k b { color: var(--accent); font-weight: 500; }
+.cue .hint { color: var(--muted); font-family: var(--font-body); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.panel p { margin: 0; color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button { font: inherit; color: var(--fg); background: var(--chip); border: 1px solid transparent; border-radius: 7px; padding: 7px 11px; cursor: pointer; line-height: 1.25; text-align: left; }
+button:hover { border-color: var(--line); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+button.primary { background: var(--accent); color: #FFFFFF; font-weight: 600; }
+button.primary:hover { filter: brightness(1.06); }
+.tech { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tech button { font-size: 14px; }
+.tech button small { display: block; color: var(--muted); font-size: 12px; }
+#explain { border-left: 3px solid var(--accent); padding-left: 12px; display: grid; gap: 6px; }
+#explain h3 { margin: 0; font-size: 16px; font-weight: 600; }
+#explain dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
+#explain dt { color: var(--muted); }
+#explain dd { margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chips button { font-family: var(--font-mono); font-size: 12px; padding: 4px 8px; }
+.label { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.grp { display: grid; gap: 5px; }
+#out { font-family: var(--font-mono); font-size: 13px; background: var(--chip); border-radius: 7px; padding: 8px 10px; overflow-wrap: anywhere; }
+.toggles label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+ol.script { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+ol.script li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 10px; padding: 7px 8px; border-radius: 7px; }
+ol.script li.on { background: var(--accent-soft); }
+ol.script time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding-top: 2px; font-variant-numeric: tabular-nums; }
+ol.script .c { grid-column: 2; font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.note { font-size: 13px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Xưởng <span>người que</span></h1>
+    <p>Xem từng kỹ thuật chuyển động trên nhân vật Mọt, tự ghép một dòng cue, hoặc phát đoạn kịch bản mẫu đã đánh dấu. Bật "Chậm ×4" để đếm từng khung hình. Hướng dẫn đầy đủ nằm trong <code>docs/huong-dan-nguoi-que-va-animation.md</code>.</p>
+  </header>
+
+  <div class="studio">
+    <div class="col">
+      <div class="stage-wrap">
+        <svg id="stage" viewBox="0 0 1600 900" role="img" aria-label="Sân khấu: nhân vật người que Mọt">
+          <rect x="-2000" y="-2000" width="5600" height="4900" fill="#FFFFFF"/>
+          <g id="cam">
+            <!-- Đồ vật trên sân khấu -->
+            <g id="p-bia" class="prop" data-cx="1180" data-cy="430" display="none"><g class="in">
+              <rect x="1062" y="252" width="260" height="380" rx="6" fill="#C9D3DE"/>
+              <rect x="1050" y="240" width="260" height="380" rx="6" fill="#23395B" stroke="#1D1D1F" stroke-width="5"/>
+              <rect x="1050" y="240" width="22" height="380" fill="#1A2B45"/>
+              <circle cx="1180" cy="330" r="34" fill="none" stroke="#F28C38" stroke-width="5"/>
+              <ellipse cx="1180" cy="330" rx="58" ry="20" fill="none" stroke="#F6C343" stroke-width="4"/>
+              <ellipse cx="1180" cy="330" rx="58" ry="20" fill="none" stroke="#F6C343" stroke-width="4" transform="rotate(60 1180 330)"/>
+              <ellipse cx="1180" cy="330" rx="58" ry="20" fill="none" stroke="#F6C343" stroke-width="4" transform="rotate(-60 1180 330)"/>
+              <text x="1190" y="440" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="700" font-size="34" fill="#FFFFFF">THÓI QUEN</text>
+              <text x="1190" y="484" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="700" font-size="34" fill="#FFFFFF">NGUYÊN TỬ</text>
+              <text x="1190" y="580" text-anchor="middle" font-family="Be Vietnam Pro, sans-serif" font-size="22" fill="#C9D3DE">James Clear</text>
+              <text x="1180" y="664" text-anchor="middle" font-family="Be Vietnam Pro, sans-serif" font-size="18" fill="#7B8794">(bìa vẽ minh họa)</text>
+            </g></g>
+            <g id="p-so" class="prop" data-cx="1180" data-cy="140" display="none"><g class="in">
+              <text x="1180" y="150" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="700" font-size="92" fill="#D9661A">20.000.000+</text>
+              <text x="1180" y="196" text-anchor="middle" font-family="Be Vietnam Pro, sans-serif" font-weight="600" font-size="30" fill="#1D1D1F">bản đã bán</text>
+            </g></g>
+            <g id="p-1" class="prop" data-cx="1150" data-cy="300" display="none"><g class="in">
+              <text x="1150" y="370" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="700" font-size="210" fill="#1D1D1F">1%</text>
+              <text x="1150" y="420" text-anchor="middle" font-family="Be Vietnam Pro, sans-serif" font-weight="600" font-size="30" fill="#5A6676">mỗi ngày</text>
+            </g></g>
+            <g id="p-37" class="prop" data-cx="1150" data-cy="610" display="none"><g class="in">
+              <text x="1150" y="680" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="700" font-size="210" fill="#1F8A7E">×37</text>
+              <text x="1150" y="730" text-anchor="middle" font-family="Be Vietnam Pro, sans-serif" font-weight="600" font-size="30" fill="#5A6676">sau một năm</text>
+            </g></g>
+            <g id="p-label" class="prop" data-cx="800" data-cy="80" display="none"><g class="in">
+              <rect x="560" y="36" width="480" height="78" rx="39" fill="#1D1D1F"/>
+              <text id="p-label-t" x="800" y="88" text-anchor="middle" font-family="Be Vietnam Pro, sans-serif" font-weight="600" font-size="32" fill="#FFFFFF">nhãn</text>
+            </g></g>
+
+            <!-- Nhân vật Mọt: gốc tọa độ ở giữa hai bàn chân -->
+            <g id="char">
+              <g id="legs" stroke="#1D1D1F" stroke-width="7" stroke-linecap="round" fill="none">
+                <path d="M -9 -118 L -15 -16"/><path d="M 9 -118 L 15 -16"/>
+                <ellipse cx="-20" cy="-9" rx="16" ry="9" fill="#FFFFFF" stroke-width="5"/>
+                <ellipse cx="21" cy="-9" rx="16" ry="9" fill="#FFFFFF" stroke-width="5"/>
+              </g>
+              <g id="upper">
+                <path d="M -27 -190 L 27 -190 L 33 -112 Q 0 -106 -33 -112 Z" fill="#2A9D8F" stroke="#1D1D1F" stroke-width="6" stroke-linejoin="round"/>
+                <g id="tie" transform="translate(4 -188)">
+                  <path d="M -7 0 L 7 0 L 7 50 L 0 41 L -7 50 Z" fill="#F08A24" stroke="#1D1D1F" stroke-width="4" stroke-linejoin="round"/>
+                </g>
+                <g id="blanket" display="none">
+                  <rect x="-58" y="-196" width="116" height="200" rx="46" fill="#9CC7E8" stroke="#1D1D1F" stroke-width="6"/>
+                  <path d="M -40 -150 Q 0 -138 40 -150 M -40 -96 Q 0 -84 40 -96" stroke="#6FA6CF" stroke-width="5" fill="none"/>
+                </g>
+                <g id="head">
+                  <rect x="-60" y="-332" width="124" height="140" rx="26" fill="#FBE3D6" stroke="#1D1D1F" stroke-width="6"/>
+                  <path d="M -66 -276 L -72 -316 L -52 -308 L -48 -346 L -26 -326 L -12 -360 L 6 -332 L 28 -356 L 34 -326 L 60 -340 L 56 -308 L 72 -296 L 66 -270 Q 50 -300 0 -298 Q -40 -300 -66 -276 Z" fill="#263859" stroke="#1D1D1F" stroke-width="6" stroke-linejoin="round"/>
+                  <g id="eyes"></g>
+                  <g id="mouth"></g>
+                </g>
+                <g id="desk" display="none">
+                  <rect x="128" y="-246" width="120" height="84" rx="8" fill="#5A6676" stroke="#1D1D1F" stroke-width="5"/>
+                  <rect x="140" y="-236" width="96" height="62" rx="4" fill="#BFE3F2"/>
+                  <path d="M 188 -162 L 188 -132" stroke="#1D1D1F" stroke-width="7"/>
+                  <rect x="40" y="-134" width="240" height="18" rx="4" fill="#A9744F" stroke="#1D1D1F" stroke-width="5"/>
+                  <path d="M 60 -116 L 60 -6 M 260 -116 L 260 -6" stroke="#1D1D1F" stroke-width="7"/>
+                </g>
+                <g id="book" display="none">
+                  <path d="M 56 -150 L 18 -170 L 18 -226 L 56 -206 Z" fill="#FFFFFF" stroke="#1D1D1F" stroke-width="5" stroke-linejoin="round"/>
+                  <path d="M 56 -150 L 94 -170 L 94 -226 L 56 -206 Z" fill="#F4F6F8" stroke="#1D1D1F" stroke-width="5" stroke-linejoin="round"/>
+                  <path d="M 28 -196 L 48 -186 M 28 -184 L 48 -174 M 66 -186 L 86 -196 M 66 -174 L 86 -184" stroke="#9AA6B5" stroke-width="3"/>
+                </g>
+                <g id="arms" stroke="#1D1D1F" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                  <polyline id="armL"/><polyline id="armR"/>
+                </g>
+                <g id="handL"></g><g id="handR"></g>
+                <g id="fx"></g>
+              </g>
+              <g id="rig" display="none" fill="#D9661A" stroke="#FFFFFF" stroke-width="3">
+                <circle cx="0" cy="-118" r="9"/><circle cx="-24" cy="-180" r="9"/><circle cx="24" cy="-180" r="9"/>
+                <circle cx="0" cy="-190" r="9"/><circle cx="4" cy="-188" r="6"/>
+                <circle id="rigEL" r="7"/><circle id="rigER" r="7"/>
+              </g>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="sub" aria-live="polite">
+        <div id="cap"></div>
+        <div class="cue" id="cue"><span class="hint">Dòng cue của câu đang chạy hiện ở đây.</span></div>
+      </div>
+
+      <section class="panel" aria-labelledby="h-seq">
+        <div class="row" style="justify-content: space-between;">
+          <h2 id="h-seq">Kịch bản mẫu: Thói quen nguyên tử</h2>
+          <div class="row">
+            <button class="primary" id="play">Phát đoạn mẫu</button>
+            <button id="stop">Dừng</button>
+          </div>
+        </div>
+        <p class="note">Đoạn [00:00]–[00:28] trong <code>templates/kich-ban-mau-nguoi-que.md</code>. Mỗi câu có một dòng cue; khi phát, cue hiện dưới phụ đề và nhân vật diễn đúng cue đó.</p>
+        <ol class="script" id="script"></ol>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-labelledby="h-tech">
+        <h2 id="h-tech">Mười kỹ thuật chuyển động</h2>
+        <div class="tech" id="tech"></div>
+        <div id="explain">
+          <h3>Chọn một kỹ thuật</h3>
+          <p>Mỗi nút diễn một kỹ thuật trên sân khấu, kèm số khung hình ở 24 khung/giây và cách làm trong phần mềm.</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-play">
+        <h2 id="h-play">Tự ghép cue</h2>
+        <div class="grp"><span class="label">P · tư thế</span><div class="chips" id="cP"></div></div>
+        <div class="grp"><span class="label">E · mắt</span><div class="chips" id="cE"></div></div>
+        <div class="grp"><span class="label">M · miệng</span><div class="chips" id="cM"></div></div>
+        <div class="grp"><span class="label">FX · hiệu ứng</span><div class="chips" id="cF"></div></div>
+        <div class="grp"><span class="label">CAM · camera</span><div class="chips" id="cC"></div></div>
+        <div id="out">P: dung | E: thuong</div>
+        <div class="row"><button id="copy">Sao chép cue</button><span class="note" id="copied"></span></div>
+      </section>
+
+      <section class="panel toggles" aria-labelledby="h-opt">
+        <h2 id="h-opt">Tùy chọn</h2>
+        <label><input type="checkbox" id="optSlow"> Chậm ×4 để đếm khung</label>
+        <label><input type="checkbox" id="optRig"> Hiện khớp xoay (pivot) của rig</label>
+        <label><input type="checkbox" id="optIdle" checked> Thở và chớp mắt tự động</label>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const INK = '#1D1D1F', SKIN = '#FBE3D6', RED = '#D1495B';
+  const $ = (id) => document.getElementById(id);
+  const svgEl = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+  // ---------- Tư thế: khuỷu (e) và bàn tay (h) theo tọa độ của nhân vật, kiểu bàn tay ----------
+  const SH = { L: [-24, -180], R: [24, -180] };
+  const POSES = {
+    'dung':          { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [34, -142], h: [36, -104], s: 'nam' } },
+    'chao':          { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [50, -198], h: [58, -248], s: 'v' } },
+    'chi-len':       { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [52, -178], h: [60, -228], s: 'chi' } },
+    'chia-tay':      { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [58, -160], h: [98, -172], s: 'xoe' } },
+    'nhun-vai':      { L: { e: [-52, -156], h: [-74, -178], s: 'xoe' }, R: { e: [52, -156], h: [76, -178], s: 'xoe' } },
+    'chong-cam':     { L: { e: [-6, -146], h: [40, -150], s: 'nam' }, R: { e: [46, -150], h: [30, -198], s: 'nam' } },
+    'ok':            { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [54, -168], h: [74, -210], s: 'ok' } },
+    'khoanh-tay':    { L: { e: [-36, -150], h: [22, -160], s: 'nam' }, R: { e: [36, -148], h: [-18, -152], s: 'nam' } },
+    'chi-nguoi-xem': { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [62, -178], h: [110, -188], s: 'chi' } },
+    'an-mung':       { L: { e: [-52, -216], h: [-60, -266], s: 'nam' }, R: { e: [52, -216], h: [60, -266], s: 'nam' } },
+    'cam-sach':      { L: { e: [-8, -150], h: [22, -176], s: 'nam' }, R: { e: [50, -146], h: [92, -176], s: 'nam' } },
+    'ngoi-may':      { L: { e: [-4, -150], h: [70, -146], s: 'nam' }, R: { e: [46, -148], h: [110, -146], s: 'nam' } },
+    'ngu':           { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [34, -142], h: [36, -104], s: 'nam' } },
+  };
+  const EYES = ['thuong', 'cuoi', 'tron', 'luom', 'x', 'nham'];
+  const MOUTHS = ['noi', 'cuoi', 'mim', 'o', 'meo', 'ngam'];
+  const FXS = ['zzz', 'set', 'mo-hoi', 'lap-lanh', 'dau-hoi', 'tim', 'bong-nghi'];
+
+  // ---------- Trạng thái ----------
+  const S = {
+    arms: JSON.parse(JSON.stringify(POSES['dung'])), pose: 'dung',
+    eyes: 'thuong', mouthRest: 'ngam', mouthOverride: null, talking: false, talkShape: 'ngam',
+    blink: 0, nextBlink: 60,
+    x: 430, y: 820, k: 1.6, dy: 0, lying: false,
+    tieA: 0, tieV: 0, kicks: [],
+    cam: { s: 1, fx: 800, fy: 450 }, shake: [],
+  };
+  let frame = 0, slow = 1, idle = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('optIdle').checked = idle;
+
+  // ---------- Đồng hồ khung hình: 24 fps ----------
+  const waiters = [];
+  const waitFrames = (n) => new Promise((res) => waiters.push({ at: frame + Math.max(1, n), res }));
+  const CANCEL = Symbol('cancel');
+  let gen = 0;
+  const newRun = () => ++gen;
+  const wf = async (n, tok) => { await waitFrames(n); if (tok !== gen) throw CANCEL; };
+  const safe = (p) => p.catch((e) => { if (e !== CANCEL) console.error(e); });
+
+  let acc = 0, last = performance.now();
+  function loop(now) {
+    acc += now - last; last = now;
+    const step = (1000 / 24) * slow;
+    if (acc > step * 6) acc = step;
+    while (acc >= step) { acc -= step; tick(); }
+    requestAnimationFrame(loop);
+  }
+  function tick() {
+    frame++;
+    // chớp mắt tự động
+    if (S.blink > 0) S.blink--;
+    else if (idle && frame >= S.nextBlink) { S.blink = 2; S.nextBlink = frame + 48 + Math.floor(Math.random() * 72); }
+    // nhép miệng: đổi hình mỗi 3 khung
+    if (S.talking && frame % 3 === 0) {
+      const seq = ['he', 'mo', 'ngam', 'mo', 'he', 'ngam', 'mo'];
+      S.talkShape = seq[Math.floor(Math.random() * seq.length)];
+    }
+    // chuyển động phụ: dây đánh dấu là một lò xo, cú hích đến trễ 2 khung
+    S.kicks = S.kicks.filter((kk) => { if (kk.at <= frame) { S.tieV += kk.v; return false; } return true; });
+    S.tieV += -0.32 * S.tieA - 0.22 * S.tieV; S.tieA += S.tieV;
+    if (Math.abs(S.tieA) < 0.05 && Math.abs(S.tieV) < 0.05) { S.tieA = 0; S.tieV = 0; }
+    for (let i = waiters.length - 1; i >= 0; i--) if (waiters[i].at <= frame) { const w = waiters.splice(i, 1)[0]; w.res(); }
+    render();
+  }
+  const kickTie = (v, delay = 2) => S.kicks.push({ at: frame + delay, v });
+
+  // ---------- Vẽ ----------
+  const charG = $('char'), upper = $('upper'), eyesG = $('eyes'), mouthG = $('mouth');
+  let lastEyes = '', lastMouth = '';
+  const E1 = [6, -262], E2 = [36, -262], MO = [24, -224];
+  function eyeSVG(kind, [x, y]) {
+    const st = `stroke="${INK}" stroke-width="6" stroke-linecap="round" fill="none"`;
+    switch (kind) {
+      case 'blink': return `<path d="M ${x - 9} ${y} L ${x + 9} ${y}" ${st}/>`;
+      case 'cuoi': return `<path d="M ${x - 9} ${y + 4} Q ${x} ${y - 9} ${x + 9} ${y + 4}" ${st}/>`;
+      case 'nham': return `<path d="M ${x - 9} ${y - 2} Q ${x} ${y + 7} ${x + 9} ${y - 2}" ${st}/>`;
+      case 'tron': return `<circle cx="${x}" cy="${y}" r="10" fill="#FFFFFF" stroke="${INK}" stroke-width="5"/><circle cx="${x + 1}" cy="${y + 1}" r="4" fill="${INK}"/>`;
+      case 'luom': return `<path d="M ${x - 10} ${y - 3} L ${x + 10} ${y - 3}" ${st}/><circle cx="${x + 5}" cy="${y + 3}" r="4" fill="${INK}"/>`;
+      case 'x': return `<path d="M ${x - 8} ${y - 8} L ${x + 8} ${y + 8} M ${x + 8} ${y - 8} L ${x - 8} ${y + 8}" ${st}/>`;
+      default: return `<path d="M ${x} ${y - 10} L ${x} ${y + 10}" ${st}/>`;
+    }
+  }
+  function mouthSVG(kind, [x, y]) {
+    const st = `stroke="${INK}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"`;
+    switch (kind) {
+      case 'he': return `<ellipse cx="${x}" cy="${y}" rx="9" ry="5" fill="${RED}" ${st}/>`;
+      case 'mo': return `<ellipse cx="${x}" cy="${y + 2}" rx="11" ry="11" fill="${RED}" ${st}/>`;
+      case 'cuoi': return `<path d="M ${x - 14} ${y - 5} Q ${x} ${y + 16} ${x + 14} ${y - 5} Z" fill="${RED}" ${st}/>`;
+      case 'mim': return `<path d="M ${x - 11} ${y} Q ${x} ${y + 7} ${x + 12} ${y - 5}" fill="none" ${st}/>`;
+      case 'o': return `<circle cx="${x}" cy="${y + 2}" r="8" fill="${RED}" ${st}/>`;
+      case 'meo': return `<path d="M ${x - 12} ${y + 4} Q ${x - 4} ${y - 7} ${x + 2} ${y + 2} Q ${x + 8} ${y + 7} ${x + 13} ${y - 2}" fill="none" ${st}/>`;
+      default: return `<path d="M ${x - 8} ${y} L ${x + 8} ${y}" fill="none" ${st}/>`;
+    }
+  }
+  function handSVG(shape) {
+    const f = `fill="${SKIN}" stroke="${INK}" stroke-width="4"`;
+    const finger = (rot) => `<rect x="4" y="-4" width="22" height="8" rx="4" ${f} transform="rotate(${rot})"/>`;
+    switch (shape) {
+      case 'chi': return finger(0) + `<circle r="10" ${f}/>`;
+      case 'v': return finger(-22) + finger(22) + `<circle r="10" ${f}/>`;
+      case 'xoe': return `<rect x="2" y="-4" width="14" height="8" rx="4" ${f} transform="rotate(-75)"/><circle r="12" ${f}/>`;
+      case 'ok': return finger(-40) + `<circle r="11" ${f}/><circle cx="2" cy="1" r="4" fill="#FFFFFF" stroke="${INK}" stroke-width="3"/>`;
+      default: return `<circle r="11" ${f}/>`;
+    }
+  }
+  const lastHand = { L: '', R: '' };
+  function drawArm(side) {
+    const a = S.arms[side], s = SH[side];
+    $('arm' + side).setAttribute('points', `${s[0]},${s[1]} ${a.e[0]},${a.e[1]} ${a.h[0]},${a.h[1]}`);
+    const ang = Math.atan2(a.h[1] - a.e[1], a.h[0] - a.e[0]) * 180 / Math.PI;
+    const g = $('hand' + side);
+    g.setAttribute('transform', `translate(${a.h[0]} ${a.h[1]}) rotate(${ang.toFixed(1)})`);
+    if (lastHand[side] !== a.s) { g.innerHTML = handSVG(a.s); lastHand[side] = a.s; }
+    $('rigE' + side).setAttribute('cx', a.e[0]); $('rigE' + side).setAttribute('cy', a.e[1]);
+  }
+  function render() {
+    const breath = idle && !S.lying ? Math.round(Math.sin(frame / 48 * Math.PI * 2) * 2) : 0;
+    const rot = S.lying ? ' rotate(-84)' : '';
+    const yy = S.y + S.dy + (S.lying ? -18 : 0);
+    const xx = S.x + (S.lying ? 330 : 0);
+    charG.setAttribute('transform', `translate(${xx} ${yy}) scale(${S.k})${rot}`);
+    upper.setAttribute('transform', `translate(0 ${breath})`);
+    $('tie').setAttribute('transform', `translate(4 -188) rotate(${S.tieA.toFixed(2)})`);
+    const ek = S.blink > 0 && !['x', 'nham'].includes(S.eyes) ? 'blink' : S.eyes;
+    if (ek !== lastEyes) { eyesG.innerHTML = eyeSVG(ek, E1) + eyeSVG(ek, E2); lastEyes = ek; }
+    const mk = S.mouthOverride || (S.talking ? S.talkShape : S.mouthRest);
+    if (mk !== lastMouth) { mouthG.innerHTML = mouthSVG(mk, MO); lastMouth = mk; }
+    drawArm('L'); drawArm('R');
+    const sh = S.shake.length ? S.shake.shift() : [0, 0];
+    const c = S.cam;
+    $('cam').setAttribute('transform', `translate(${800 + sh[0]} ${450 + sh[1]}) scale(${c.s}) translate(${-c.fx} ${-c.fy})`);
+  }
+
+  // ---------- Hành động ----------
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  function setPoseProps(name) {
+    $('book').setAttribute('display', name === 'cam-sach' ? 'inline' : 'none');
+    $('desk').setAttribute('display', name === 'ngoi-may' ? 'inline' : 'none');
+    $('blanket').setAttribute('display', name === 'ngu' ? 'inline' : 'none');
+    S.lying = name === 'ngu';
+  }
+  async function toPose(name, tok, mode = 'snap') {
+    const to = POSES[name], from = JSON.parse(JSON.stringify(S.arms));
+    const n = mode === 'snap' ? 2 : 10;
+    if (name === 'ngu' || S.pose === 'ngu') { S.arms = JSON.parse(JSON.stringify(to)); S.pose = name; setPoseProps(name); if (name === 'ngu') S.eyes = 'nham'; await wf(1, tok); return; }
+    setPoseProps(name);
+    for (let i = 1; i <= n; i++) {
+      const t = mode === 'snap' ? i / n : ease(i / n);
+      for (const side of ['L', 'R']) {
+        const a = S.arms[side], f = from[side], b = to[side];
+        a.e = [lerp(f.e[0], b.e[0], t), lerp(f.e[1], b.e[1], t)];
+        a.h = [lerp(f.h[0], b.h[0], t), lerp(f.h[1], b.h[1], t)];
+        a.s = t >= 0.5 ? b.s : f.s;
+      }
+      await wf(1, tok);
+    }
+    S.pose = name;
+    kickTie(mode === 'snap' ? 7 : 2);
+  }
+  function setPoseNow(name) { S.arms = JSON.parse(JSON.stringify(POSES[name])); S.pose = name; setPoseProps(name); }
+  async function anticipate(name, tok) {
+    // lấy đà: hạ người 3 khung, rồi bật lên, quá đà, về chỗ
+    for (const d of [4, 8, 10]) { S.dy = d; await wf(1, tok); }
+    S.dy = -8; await toPose(name, tok);
+    for (const d of [-4, 0]) { S.dy = d; await wf(1, tok); }
+  }
+  const POP = [0, 0.45, 0.85, 1.1, 1.06, 1.0];
+  function propTransform(g, sc, ty = 0) {
+    const cx = +g.dataset.cx, cy = +g.dataset.cy;
+    g.querySelector('.in').setAttribute('transform', `translate(${cx} ${cy + ty}) scale(${sc}) translate(${-cx} ${-cy})`);
+  }
+  async function showProp(id, kind, tok) {
+    const g = $('p-' + id); g.setAttribute('display', 'inline');
+    if (kind === 'dap') {
+      for (const ty of [-420, -260, -110, 0, -24, 0]) { propTransform(g, 1, ty); await wf(1, tok); }
+      shake(10, tok);
+    } else if (kind === 'fade') {
+      for (let i = 1; i <= 8; i++) { g.setAttribute('opacity', i / 8); propTransform(g, 1); await wf(1, tok); }
+      g.removeAttribute('opacity');
+    } else {
+      for (const sc of POP) { propTransform(g, sc); await wf(1, tok); }
+    }
+  }
+  async function hideProp(id, tok) {
+    const g = $('p-' + id); if (g.getAttribute('display') === 'none') return;
+    for (const sc of [1.06, 0.6, 0]) { propTransform(g, sc); await wf(1, tok); }
+    g.setAttribute('display', 'none');
+  }
+  function shake(amp = 18) { const s = []; for (const f of [1, -0.8, 0.6, -0.4, 0.2, 0]) s.push([amp * f, amp * f * 0.4]); S.shake = s; }
+  function camIn() { S.cam = { s: 1.9, fx: S.x + 30 * S.k, fy: S.y - 250 * S.k }; }
+  function camOut() { S.cam = { s: 1, fx: 800, fy: 450 }; }
+  async function camPan(toFx, tok, n = 24) {
+    const from = S.cam.fx;
+    for (let i = 1; i <= n; i++) { S.cam.fx = lerp(from, toFx, ease(i / n)); await wf(1, tok); }
+  }
+  const FX_SVG = {
+    'zzz': `<text x="70" y="-372" font-family="Baloo 2, sans-serif" font-weight="700" font-size="44" fill="${INK}">Z<tspan font-size="34" dy="-22">z</tspan><tspan font-size="26" dy="-18">z</tspan></text>`,
+    'set': `<path d="M -92 -380 L -66 -380 L -80 -346 L -58 -346 L -98 -296 L -86 -336 L -106 -336 Z" fill="#F6C343" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/>`,
+    'mo-hoi': `<path d="M 76 -326 Q 62 -300 76 -294 Q 90 -300 76 -326 Z" fill="#8CC8F0" stroke="${INK}" stroke-width="4"/>`,
+    'lap-lanh': ['M 96 -352 l 6 -16 l 6 16 l 16 6 l -16 6 l -6 16 l -6 -16 l -16 -6 Z', 'M 70 -390 l 4 -10 l 4 10 l 10 4 l -10 4 l -4 10 l -4 -10 l -10 -4 Z', 'M 126 -310 l 4 -10 l 4 10 l 10 4 l -10 4 l -4 10 l -4 -10 l -10 -4 Z'].map((d) => `<path d="${d}" fill="#F6C343" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>`).join(''),
+    'dau-hoi': `<text x="78" y="-322" font-family="Baloo 2, sans-serif" font-weight="700" font-size="84" fill="#D9661A" stroke="${INK}" stroke-width="3">?</text>`,
+    'tim': `<path d="M 96 -318 C 70 -334 70 -360 88 -362 C 96 -362 96 -356 96 -352 C 96 -356 96 -362 104 -362 C 122 -360 122 -334 96 -318 Z" fill="${RED}" stroke="${INK}" stroke-width="4"/>`,
+    'bong-nghi': `<circle cx="78" cy="-330" r="7" fill="#FFFFFF" stroke="${INK}" stroke-width="4"/><circle cx="96" cy="-356" r="11" fill="#FFFFFF" stroke="${INK}" stroke-width="4"/><ellipse cx="160" cy="-410" rx="64" ry="42" fill="#FFFFFF" stroke="${INK}" stroke-width="5"/><text x="160" y="-400" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="700" font-size="40" fill="${INK}">…</text>`,
+  };
+  async function fx(name, tok, hold = 36) {
+    const g = svgEl('g', {}); g.innerHTML = FX_SVG[name]; $('fx').appendChild(g);
+    const bb = { x: 90, y: -340 };
+    try {
+      for (const sc of POP) { g.setAttribute('transform', `translate(${bb.x} ${bb.y}) scale(${sc}) translate(${-bb.x} ${-bb.y})`); await wf(1, tok); }
+      await wf(hold, tok);
+    } finally { g.remove(); }
+  }
+  async function hop(tok, h = 26) {
+    for (const d of [6, 10, -h * 0.6, -h, -h * 0.7, 0, 5, 0]) { S.dy = d; await wf(1, tok); }
+    kickTie(9, 2);
+  }
+  function label(text) {
+    if (!text) { $('p-label').setAttribute('display', 'none'); return; }
+    $('p-label-t').textContent = text; $('p-label').setAttribute('display', 'inline'); propTransform($('p-label'), 1);
+  }
+
+  // ---------- Phụ đề và cue ----------
+  const capEl = $('cap'), cueEl = $('cue');
+  function showCue(str) {
+    cueEl.innerHTML = '';
+    if (!str) { cueEl.innerHTML = '<span class="hint">Dòng cue của câu đang chạy hiện ở đây.</span>'; return; }
+    for (const part of str.split('|')) {
+      const p = part.trim(); const i = p.indexOf(':');
+      const sp = document.createElement('span'); sp.className = 'k';
+      if (i > 0) { const b = document.createElement('b'); b.textContent = p.slice(0, i + 1); sp.append(b, ' ' + p.slice(i + 1).trim()); }
+      else sp.textContent = p;
+      cueEl.appendChild(sp);
+    }
+  }
+  async function speak(text, tok, hooks = {}) {
+    capEl.textContent = '';
+    const words = text.split(' ');
+    for (let i = 0; i < words.length; i++) {
+      if (hooks[i]) safe(hooks[i]());
+      capEl.textContent += (i ? ' ' : '') + words[i];
+      S.talking = true;
+      await wf(6, tok);
+      if (/[…]$/.test(words[i])) { S.talking = false; await wf(10, tok); }
+      else if (/[,.:?]$/.test(words[i])) { S.talking = false; await wf(4, tok); }
+    }
+    S.talking = false;
+  }
+
+  // ---------- Đặt lại sân khấu ----------
+  function reset() {
+    for (const g of document.querySelectorAll('.prop')) g.setAttribute('display', 'none');
+    $('fx').innerHTML = ''; camOut(); S.shake = []; S.dy = 0;
+    setPoseNow('dung'); S.eyes = 'thuong'; S.mouthOverride = null; S.mouthRest = 'ngam'; S.talking = false;
+    capEl.textContent = ''; showCue('');
+    for (const li of document.querySelectorAll('ol.script li')) li.classList.remove('on');
+  }
+
+  // ---------- Kịch bản mẫu ----------
+  const SEQ = [
+    { t: '00:00', text: 'Xin chào, tôi là Mọt, người đọc sách hộ bạn.', cue: 'P: chao | E: cuoi | NEN: A',
+      run: async (tok) => { S.eyes = 'cuoi'; safe(anticipate('chao', tok)); await speak(SEQ[0].text, tok); } },
+    { t: '00:03', text: 'Hôm nay là một cuốn sách self-help bán hơn hai mươi triệu bản.', cue: 'P: chia-tay | E: thuong | IN: bia-sach (pop, phai) | IN: so "20.000.000+" (dap, tren-phai)',
+      run: async (tok) => { S.eyes = 'thuong'; safe(toPose('chia-tay', tok)); safe(showProp('bia', 'pop', tok));
+        await speak(SEQ[1].text, tok, { 8: () => showProp('so', 'dap', tok) }); } },
+    { t: '00:08', text: 'Mà sách self-help bán chạy thì thường… nói hơi nhiều.', cue: 'P: chong-cam | E: luom | OUT: so | FX: mo-hoi',
+      run: async (tok) => { safe(toPose('chong-cam', tok)); S.eyes = 'luom'; safe(hideProp('so', tok));
+        await speak(SEQ[2].text, tok, { 7: () => fx('mo-hoi', tok, 40) }); } },
+    { t: '00:11', text: '(im lặng)', cue: 'BEAT: 0.5s', silent: true,
+      run: async (tok) => { capEl.textContent = ''; S.mouthOverride = 'mim'; await wf(12, tok); S.mouthOverride = null; } },
+    { t: '00:12', text: 'Vậy cuốn này có đáng mười tiếng đọc của bạn không?', cue: 'P: chi-nguoi-xem | E: tron | CAM: punch-in | FX: dau-hoi',
+      run: async (tok) => { S.eyes = 'tron'; camIn(); safe(anticipate('chi-nguoi-xem', tok));
+        await speak(SEQ[4].text, tok, { 9: () => fx('dau-hoi', tok, 30) }); } },
+    { t: '00:16', text: 'Ý đầu tiên: tốt lên một phần trăm mỗi ngày.', cue: 'P: chi-len | E: thuong | CAM: punch-out | OUT: bia-sach | IN: chu "1%" (dap, phai)',
+      run: async (tok) => { camOut(); S.eyes = 'thuong'; safe(toPose('chi-len', tok)); safe(hideProp('bia', tok));
+        await speak(SEQ[5].text, tok, { 5: () => showProp('1', 'dap', tok) }); } },
+    { t: '00:20', text: 'Nghe thì nhỏ, nhưng cộng dồn một năm là gấp ba mươi bảy lần.', cue: 'P: an-mung | E: cuoi | IN: chu "×37" (pop, phai) | FX: lap-lanh',
+      run: async (tok) => { await speak(SEQ[6].text, tok, { 9: async () => { S.eyes = 'cuoi'; safe(anticipate('an-mung', tok)); safe(showProp('37', 'pop', tok)); await wf(4, tok); await fx('lap-lanh', tok, 30); } }); } },
+    { t: '00:24', text: 'Còn kém đi một phần trăm mỗi ngày thì… gần như về không.', cue: 'P: nhun-vai | E: x | M: meo | OUT: chu | CAM: rung',
+      run: async (tok) => { S.eyes = 'thuong'; safe(toPose('nhun-vai', tok)); safe(hideProp('37', tok));
+        await speak(SEQ[7].text, tok, { 9: () => { S.eyes = 'x'; S.mouthRest = 'meo'; safe(hideProp('1', tok)); shake(22); return Promise.resolve(); } }); } },
+    { t: '00:28', text: '(im lặng)', cue: 'BEAT: 0.5s', silent: true,
+      run: async (tok) => { capEl.textContent = ''; S.mouthOverride = 'meo'; await wf(14, tok); S.mouthOverride = null; } },
+  ];
+  const scriptOl = $('script');
+  SEQ.forEach((s) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<time>[${s.t}]</time><span></span><span class="c"></span>`;
+    li.children[1].textContent = s.silent ? '(khoảng lặng)' : s.text;
+    li.children[2].textContent = '> ' + s.cue;
+    scriptOl.appendChild(li);
+  });
+  async function playSeq() {
+    const tok = newRun(); reset(); setTech(null);
+    $('explain').innerHTML = '<h3>Đang phát kịch bản mẫu</h3><p>Để ý: mỗi câu có ít nhất một thay đổi; câu hỏi trung tâm được cắt cận; sau câu đùa có khoảng lặng rồi mới phản ứng.</p>';
+    try {
+      for (let i = 0; i < SEQ.length; i++) {
+        scriptOl.querySelectorAll('li').forEach((li, j) => li.classList.toggle('on', j === i));
+        showCue(SEQ[i].cue);
+        await SEQ[i].run(tok);
+      }
+      await wf(20, tok);
+      camOut(); S.eyes = 'cuoi'; S.mouthRest = 'cuoi'; await toPose('chao', tok); capEl.textContent = 'Hết đoạn mẫu.'; showCue('');
+      scriptOl.querySelectorAll('li').forEach((li) => li.classList.remove('on'));
+    } catch (e) { if (e !== CANCEL) console.error(e); }
+  }
+  $('play').addEventListener('click', playSeq);
+  $('stop').addEventListener('click', () => { newRun(); reset(); });
+
+  // ---------- Mười kỹ thuật ----------
+  const TECH = [
+    { id: 'snap', name: 'Đổi tư thế', sub: 'cắt gọn',
+      what: 'Đổi thẳng từ tư thế này sang tư thế kia, chỉ chèn một khung ở giữa. Mỗi tư thế giữ ít nhất nửa giây.',
+      frames: '1 khung trung gian, giữ ≥ 12 khung', tool: 'After Effects: hold keyframe. CapCut: thay ảnh PNG tư thế ở mỗi câu.',
+      run: async (tok) => { for (const p of ['chia-tay', 'chi-len', 'nhun-vai', 'ok', 'khoanh-tay', 'dung']) { showCue('P: ' + p); await toPose(p, tok, 'snap'); await wf(16, tok); } } },
+    { id: 'tween', name: 'Trôi mượt', sub: 'lỗi hay gặp',
+      what: 'Cùng chuỗi tư thế nhưng nội suy mượt 10 khung và không giữ. Tay trôi như robot, mắt không kịp đọc tư thế nào. So sánh với nút bên cạnh.',
+      frames: '10 khung trung gian, giữ 0 khung', tool: 'Lỗi này thường do để mặc định "ease" giữa mọi keyframe.',
+      run: async (tok) => { for (const p of ['chia-tay', 'chi-len', 'nhun-vai', 'ok', 'khoanh-tay', 'dung']) { showCue('P: ' + p + '  (trôi)'); await toPose(p, tok, 'tween'); } } },
+    { id: 'blink', name: 'Chớp mắt', sub: '2 khung',
+      what: 'Mắt nhắm 2 khung, cách nhau ngẫu nhiên 2–5 giây. Khi đang giữ tư thế, chớp mắt và thở là thứ giữ cho nhân vật còn sống.',
+      frames: 'nhắm 2–3 khung, cách 48–120 khung', tool: 'Character Animator: tự động. AE: expression ngẫu nhiên trên lớp mắt nhắm.',
+      run: async (tok) => { for (let i = 0; i < 3; i++) { await wf(20, tok); S.blink = 2; showCue('E: nham (2 khung) → thuong'); } await wf(20, tok); } },
+    { id: 'lip', name: 'Nhép miệng', sub: '3 hình miệng',
+      what: 'Chỉ cần ba hình: ngậm, hé, mở, đổi mỗi 2–4 khung khi có tiếng. Không cần khớp từng âm tiết; người xem chỉ cần thấy miệng động đúng lúc có giọng.',
+      frames: 'đổi hình mỗi 3 khung', tool: 'Character Animator: tự khớp theo giọng. CapCut: xen kẽ hai PNG miệng ngậm/mở.',
+      run: async (tok) => { showCue('M: noi = ngam / he / mo'); await speak('Một, hai, ba, đây là nhép miệng bằng ba hình vẽ sẵn.', tok); } },
+    { id: 'antic', name: 'Lấy đà', sub: 'trước động tác lớn',
+      what: 'Lần đầu giơ tay không lấy đà, lần sau hạ người 3 khung rồi bật lên, quá đà một chút rồi về chỗ. Động tác có lực hơn hẳn.',
+      frames: 'lấy đà 3 khung, quá đà 1–2 khung', tool: 'AE: thêm keyframe vị trí ngược chiều trước keyframe chính.',
+      run: async (tok) => {
+        label('không lấy đà'); await toPose('an-mung', tok); await wf(20, tok); await toPose('dung', tok); await wf(14, tok);
+        label('có lấy đà'); await anticipate('an-mung', tok); await wf(20, tok); await toPose('dung', tok); label(''); } },
+    { id: 'pop', name: 'Bật ra rồi dội', sub: '0 → 110 → 100%',
+      what: 'Lần đầu bìa sách hiện mờ dần, lần sau bật ra: phóng quá 110% rồi dội về 100%. Bật ra kéo mắt người xem về đúng chỗ.',
+      frames: '6 khung', tool: 'AE: scale 0 → 110 → 100. CapCut: hiệu ứng vào "Pop" hoặc "Bounce".',
+      run: async (tok) => {
+        await toPose('chia-tay', tok);
+        label('hiện mờ dần'); await showProp('bia', 'fade', tok); await wf(24, tok); await hideProp('bia', tok); await wf(10, tok);
+        label('bật ra rồi dội'); showCue('IN: bia-sach (pop, phai)'); await showProp('bia', 'pop', tok); await wf(30, tok); label(''); } },
+    { id: 'second', name: 'Chuyển động phụ', sub: 'dây trễ 2 khung',
+      what: 'Nhân vật nhảy lên; dây đánh dấu sách trễ 2 khung rồi lắc thêm vài nhịp mới đứng yên. Bật "Hiện khớp xoay" để thấy điểm treo của dây.',
+      frames: 'trễ 2 khung, tắt dần sau ~12 khung', tool: 'AE: expression "delay" hoặc Duik Bounce trên lớp phụ.',
+      run: async (tok) => { for (let i = 0; i < 3; i++) { await hop(tok); await wf(14, tok); } } },
+    { id: 'beat', name: 'Nhịp hài', sub: 'khoảng lặng 0,5s',
+      what: 'Lần đầu phản ứng ngay sau câu đùa, câu đùa trôi mất. Lần sau giữ im 12 khung rồi mới cắt cận mặt.',
+      frames: 'giữ 12–24 khung', tool: 'Dựng: chừa khoảng trống trong bản thu, đừng cắt sát.',
+      run: async (tok) => {
+        for (const withBeat of [false, true]) {
+          label(withBeat ? 'có khoảng lặng' : 'không khoảng lặng');
+          await toPose('chong-cam', tok); S.eyes = 'thuong';
+          await speak('Để giày ở cửa, sáng hôm sau… vẫn ngủ tiếp.', tok);
+          if (withBeat) { showCue('BEAT: 0.5s'); await wf(12, tok); }
+          camIn(); S.eyes = 'luom'; S.mouthOverride = 'mim'; showCue('CAM: punch-in | E: luom'); await wf(30, tok);
+          camOut(); S.mouthOverride = null; S.eyes = 'thuong'; capEl.textContent = ''; await wf(16, tok);
+        }
+        label(''); } },
+    { id: 'cam', name: 'Punch-in, lia', sub: 'camera làm hộ',
+      what: 'Cắt thẳng vào mặt (không zoom từ từ) để chốt ý, cắt ra để quay lại giải thích, rồi lia sang hình minh họa.',
+      frames: 'cắt: 0 khung · lia: 24 khung', tool: 'AE/CapCut: đổi scale và vị trí ở một keyframe giữ; lia bằng keyframe vị trí có ease.',
+      run: async (tok) => {
+        await showProp('bia', 'pop', tok); await wf(12, tok);
+        showCue('CAM: punch-in'); camIn(); S.eyes = 'tron'; await wf(24, tok);
+        showCue('CAM: punch-out'); camOut(); S.eyes = 'thuong'; await wf(18, tok);
+        showCue('CAM: lia-phai'); S.cam.s = 1.6; S.cam.fy = 430; S.cam.fx = 520; await wf(10, tok); await camPan(1150, tok, 24); await wf(20, tok);
+        camOut(); } },
+    { id: 'fx', name: 'Rung và hiệu ứng', sub: 'hình dán',
+      what: 'Rung khung 6 khung giảm dần cho cú sốc. Hiệu ứng là hình dán bật ra cạnh đầu rồi tự mất, không phải mô phỏng.',
+      frames: 'rung 6 khung · hiệu ứng giữ 24–48 khung', tool: 'AE: wiggle trong 6 khung. CapCut: hiệu ứng "Shake" + sticker.',
+      run: async (tok) => {
+        showCue('CAM: rung | E: tron'); S.eyes = 'tron'; S.mouthOverride = 'o'; shake(24); await wf(16, tok); S.mouthOverride = null; S.eyes = 'thuong';
+        for (const f of FXS) { showCue('FX: ' + f); await fx(f, tok, 18); } } },
+  ];
+  const techBox = $('tech');
+  function setTech(id) { techBox.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.id === id))); }
+  TECH.forEach((t) => {
+    const b = document.createElement('button'); b.dataset.id = t.id; b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = `${t.name}<small>${t.sub}</small>`;
+    b.addEventListener('click', async () => {
+      const tok = newRun(); reset(); setTech(t.id);
+      const ex = $('explain');
+      ex.innerHTML = `<h3></h3><p></p><dl><dt>Số khung</dt><dd></dd><dt>Trong phần mềm</dt><dd></dd></dl>`;
+      ex.querySelector('h3').textContent = t.name; ex.querySelector('p').textContent = t.what;
+      const dd = ex.querySelectorAll('dd'); dd[0].textContent = t.frames + ' (24 khung = 1 giây)'; dd[1].textContent = t.tool;
+      try { await wf(6, tok); await t.run(tok); setTech(null); } catch (e) { if (e !== CANCEL) console.error(e); }
+    });
+    techBox.appendChild(b);
+  });
+
+  // ---------- Tự ghép cue ----------
+  const pick = { P: 'dung', E: 'thuong', M: null, FX: null, CAM: null };
+  function updateOut() {
+    const parts = [`P: ${pick.P}`, `E: ${pick.E}`];
+    if (pick.M) parts.push(`M: ${pick.M}`);
+    if (pick.FX) parts.push(`FX: ${pick.FX}`);
+    if (pick.CAM) parts.push(`CAM: ${pick.CAM}`);
+    $('out').textContent = parts.join(' | ');
+    showCue(parts.join(' | '));
+  }
+  function chips(boxId, items, key, onPick) {
+    const box = $(boxId);
+    items.forEach((it) => {
+      const b = document.createElement('button'); b.textContent = it; b.setAttribute('aria-pressed', String(pick[key] === it));
+      b.addEventListener('click', () => {
+        box.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        pick[key] = it; onPick(it); updateOut();
+      });
+      box.appendChild(b);
+    });
+  }
+  let playTok = 0;
+  const pgTok = () => { if (playTok !== gen) { playTok = newRun(); setTech(null); capEl.textContent = ''; scriptOl.querySelectorAll('li').forEach((li) => li.classList.remove('on')); } return playTok; };
+  chips('cP', Object.keys(POSES), 'P', (p) => { const tok = pgTok(); safe(['an-mung', 'chi-nguoi-xem', 'chao'].includes(p) ? anticipate(p, tok) : toPose(p, tok)); if (p !== 'ngu' && S.eyes === 'nham' && pick.E !== 'nham') S.eyes = pick.E; });
+  chips('cE', EYES, 'E', (e) => { pgTok(); S.eyes = e; });
+  chips('cM', MOUTHS, 'M', (m) => {
+    const tok = pgTok(); S.mouthOverride = null; S.mouthRest = m === 'noi' ? 'ngam' : m;
+    if (m === 'noi') safe(speak('Đây là miệng đang nói theo giọng.', tok));
+  });
+  chips('cF', FXS, 'FX', (f) => { safe(fx(f, pgTok(), 40)); });
+  chips('cC', ['punch-in', 'punch-out', 'rung'], 'CAM', (c) => { pgTok(); if (c === 'punch-in') camIn(); else if (c === 'punch-out') camOut(); else shake(22); });
+  $('copy').addEventListener('click', () => {
+    const txt = '> ' + $('out').textContent;
+    const done = (msg) => { $('copied').textContent = msg; setTimeout(() => { $('copied').textContent = ''; }, 1800); };
+    try {
+      navigator.clipboard.writeText(txt).then(() => done('Đã sao chép.'), () => { selectOut(); done('Chưa sao chép được, dòng cue đã được bôi đen.'); });
+    } catch (e) { selectOut(); done('Chưa sao chép được, dòng cue đã được bôi đen.'); }
+  });
+  function selectOut() { const r = document.createRange(); r.selectNodeContents($('out')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+  // ---------- Tùy chọn ----------
+  $('optSlow').addEventListener('change', (e) => { slow = e.target.checked ? 4 : 1; });
+  $('optRig').addEventListener('change', (e) => { $('rig').setAttribute('display', e.target.checked ? 'inline' : 'none'); });
+  $('optIdle').addEventListener('change', (e) => { idle = e.target.checked; });
+
+  render();
+  requestAnimationFrame((t) => { last = t; requestAnimationFrame(loop); });
+})();
+</script>
