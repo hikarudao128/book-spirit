@@ -1,6 +1,6 @@
 # Hướng dẫn review sách
 
-Phương pháp này rút từ cách review phim của kênh The Reviewer (phân tích chi tiết ở [`phan-tich-cach-review-the-reviewer.md`](phan-tich-cach-review-the-reviewer.md)), rồi chỉnh lại cho phù hợp với sách. Có template dùng ngay ở [`../templates/review-sach.md`](../templates/review-sach.md).
+Phương pháp này rút từ cách review phim của kênh The Reviewer (phân tích chi tiết ở [`phan-tich-cach-review-the-reviewer.md`](phan-tich-cach-review-the-reviewer.md)), rồi chỉnh lại cho phù hợp với sách. Có template dùng ngay ở [`../templates/review-sach.md`](../templates/review-sach.md). Nếu làm video, phần hình ảnh và animation xem ở [`phan-tich-hinh-anh-kenh-vui-ve.md`](phan-tich-hinh-anh-kenh-vui-ve.md).
 
 ## Phim và sách khác nhau ở đâu
 
