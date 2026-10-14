@@ -18,19 +18,14 @@ def blink(t, seed=0, period=3.7):
 
 
 # ------------------------------------------------------------------ grown-up kids
-# The four friends forty years on. Each keeps a signature feature from the kid design.
-# All four share Old Mui's proportions (engine `muilon`: legs 1, torso 1, width 1, height by k only), so the
-# grown-ups read as one cast; Hai keeps longer (stork) legs.
-_GROWN_GEO = dict(legs=1.0, torso=1.0, width=1.0)
+# The four friends forty years on.
+# Old Mui is the engine's `muilon`; Hai, Ti and Tun are their kid designs (haico / tisun / tun, same hair
+# and colours) scaled up uniformly to grown-up height. A briefcase is the only addition (draw_briefcase).
 GROWN = {
-    "MUI": ("OLD_MUI", dict(shirt=(200, 206, 214), pants=(60, 60, 70), tie=True)),
-    "HAI": ("OLD_MUI", dict(_GROWN_GEO, k=2.0, legs=1.45, hair="short", hair_color=(52, 48, 50), bandaid=True,
-                            bags=False, grey_temples=False, belly=False, expr="smug", shirt=(150, 190, 140),
-                            pants=(120, 96, 70), tie=True, tie_color=(120, 60, 40))),
-    "TUN": ("MOM", dict(_GROWN_GEO, k=1.9, hair="topknot", eye_scale=1.2, hair_color=(43, 43, 43),
-                        shirt=(185, 167, 230), pants=(70, 66, 74), lips=True)),
-    "TI": ("MOM", dict(_GROWN_GEO, k=1.95, hair="ponytail_bow", missing_teeth=True, hair_color=(59, 42, 32),
-                       shirt=(242, 141, 178), pants=(60, 60, 80), lips=True, glasses=True)),
+    "MUI": ("OLD_MUI", {}),
+    "HAI": ("HAI", dict(k=1.22 * 1.6)),      # ~340 px, still the stork legs
+    "TI": ("TI", dict(k=1.18 * 1.75)),       # ~300 px
+    "TUN": ("TUN", dict(k=0.98 * 1.95)),     # ~300 px
 }
 
 

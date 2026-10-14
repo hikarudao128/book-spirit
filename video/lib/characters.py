@@ -21,8 +21,9 @@ Facing: the face is drawn in 3/4 view looking right (engine default). flip=True 
 figure. The face also turns toward `look` when |look[0]| >= 0.25, so a character told to look
 left faces left even without flip.
 
-Names: MUI, OLD_MUI, HAI, TUN, TI, MOM, DAD, TEACHER, HIS_KID, VENDOR, KID (generic
-classmate; pass hair/colours via `variant` / `colors`), plus draw_dog(...) for DOG.
+Names: MUI (engine `mui`), OLD_MUI (`muilon`), HAI (`haico`), TUN (`tun`), TI (`tisun`), HIS_KID (`anh`),
+KID (`em`, generic classmate; recolour via `variant` / `colors`), and MOM, DAD, TEACHER, VENDOR, which
+are all drawn as Mọt (`mot`/`mot2`). Only uniform scale (k) differs from the engine. Plus draw_dog(...).
 """
 import math
 import re
@@ -142,39 +143,38 @@ def _q(cv, p0, p1, p2, width, col=INK):
 # k: engine scale; legs/torso: length factors (engine haico has legs 1.75); width: shirt width factor.
 _KID = dict(kind="kid", k=1.15, legs=1.0, torso=1.0, width=1.0, skin=SKIN, eye_scale=1.0, bottom="shorts",
             neck=None, shoes=INK, pants=P.NAVY)
-_ADULT = dict(kind="adult", k=1.8, legs=2.3, torso=1.85, width=1.15, skin=SKIN, eye_scale=1.0, bottom="pants",
+# adults use the engine's own proportions too (legs 1, torso 1, width 1); height comes from k only
+_ADULT = dict(kind="adult", k=2.3, legs=1.0, torso=1.0, width=1.0, skin=SKIN, eye_scale=1.0, bottom="pants",
               neck=None, shoes=INK, pants=P.PANTS_DARK)
+# engine `mot` / `mot2` (Mọt): spiky navy hair, blue polo with a lanyard. Every adult without an engine
+# design of their own (MOM, DAD, TEACHER, VENDOR) is drawn as Mọt, scaled uniformly (k 2.3 ~ 330 px).
+_POLO, _POLO_RED = _hex("#1E4FC2"), _hex("#E03A3E")
+_MOT = dict(_ADULT, hair="spiky", hair_color=_hex("#263859"), shirt=_POLO, polo=True, neck="lanyard",
+            expr="neutral", legacy=(62, 85, 89, 105))
 
 SPECS = {
-    # engine cast (CHARS) -------------------------------------------------------------
+    # engine cast (CHARS), exactly as engine.js; only k may differ (uniform scale) ----------------
     "MUI": dict(_KID, k=1.25, hair="tuft", hair_color=_hex("#4A3426"), shirt=_hex("#F4C542"), expr="bored",
                 legacy=(40, 46, 54, 58)),                                   # engine `mui`
     "HAI": dict(_KID, k=1.22, legs=1.75, hair="short", hair_color=_hex("#2B2B2B"), shirt=_hex("#A8754E"),
-                expr="smug", bandaid=True, legacy=(37, 84, 60, 44)),        # engine `haico`
+                expr="smug", legacy=(37, 84, 60, 44)),                      # engine `haico`
     "TI": dict(_KID, k=1.18, hair="bob", hair_color=_hex("#3B2A20"), shirt=_hex("#F28DB2"), expr="happy",
-               missing_teeth=True, bow=True, legacy=(39, 46, 54, 58)),   # engine `tisun`
-    "TUN": dict(_KID, k=1.06, hair="topknot", hair_color=_hex("#2B2B2B"), shirt=_hex("#B9A7E6"), expr="happy",
-                eye_scale=1.18, legacy=(40, 46, 54, 58)),   # engine `tun` (a bit taller)
-    # engine `muilon` proportions exactly (legs 1, torso 1, width 1); height by uniform k only
-    # (k 2.1 -> ~1.7x Mui). legacy tuple = the old pixel geometry at these proportions.
-    "OLD_MUI": dict(_ADULT, k=2.1, legs=1.0, torso=1.0, width=1.0, hair="neat", hair_color=_hex("#4A3426"),
-                    shirt=_hex("#6C7A89"), neck="tie", tie_color=_hex("#2E3A59"), bags=True, grey_temples=True,
-                    belly=True, expr="bored", legacy=(57, 78, 81, 96)),  # engine `muilon`
-    "KID": dict(_KID, k=1.15, hair="short", hair_color=_hex("#3A2A1F"), shirt=_hex("#E07A5F"), expr="neutral",
-                legacy=(40, 46, 54, 58)),                                   # engine `anh` (recolourable)
-    # new cast in the same style ------------------------------------------------------------
-    "MOM": dict(_ADULT, k=1.8, legs=2.35, torso=1.85, hair="bun", hair_color=_hex("#2B2220"),
-                shirt=_hex("#C4464F"), expr="neutral", lips=True, legacy=(54, 170, 150, 104)),
-    "DAD": dict(_ADULT, k=1.95, legs=2.25, torso=1.9, width=1.22, hair="short", hair_color=_hex("#2B2B2B"),
-                shirt=_hex("#E9E6DC"), expr="neutral", glasses=True, legacy=(56, 170, 150, 112)),
-    "TEACHER": dict(_ADULT, k=1.8, legs=2.3, torso=1.85, hair="bun", hair_color=_hex("#2B2220"),
-                    shirt=_hex("#82BEE6"), bottom="aodai", expr="neutral", glasses=True, lips=True,
-                    legacy=(54, 170, 150, 104)),
-    "HIS_KID": dict(_KID, kind="teen", k=1.3, legs=1.9, torso=1.3, width=1.08, hair="messy",
-                    hair_color=_hex("#2B2B2B"), shirt=_hex("#C8463C"), bottom="pants", expr="bored", hood=True,
-                    legacy=(38, 96, 92, 70)),
-    "VENDOR": dict(_ADULT, k=1.75, legs=2.1, torso=1.8, hair="cap_short", hair_color=_hex("#2B2220"),
-                   shirt=_hex("#7FA77A"), expr="happy", hat="non_la", legacy=(54, 150, 135, 96)),
+               missing_teeth=True, legacy=(39, 46, 54, 58)),               # engine `tisun` (+ gap teeth)
+    "TUN": dict(_KID, k=0.98, hair="topknot", hair_color=_hex("#2B2B2B"), shirt=_hex("#B9A7E6"), expr="happy",
+                legacy=(40, 46, 54, 58)),                                   # engine `tun`
+    # engine `muilon` proportions exactly (legs 1, torso 1, width 1); engine k 1.75 scaled uniformly to 2.1
+    # (~1.65x Mui). legacy tuple = the old pixel geometry at these proportions.
+    "OLD_MUI": dict(_ADULT, k=2.1, hair="neat", hair_color=_hex("#4A3426"), shirt=_hex("#6C7A89"), neck="tie",
+                    tie_color=_hex("#2E3A59"), bags=True, expr="bored", legacy=(57, 78, 81, 96)),  # engine `muilon`
+    "KID": dict(_KID, k=0.98, hair="tuft", hair_color=_hex("#3A2A1F"), shirt=_hex("#81B29A"), expr="neutral",
+                legacy=(40, 46, 54, 58)),                                   # engine `em` (recolourable)
+    "HIS_KID": dict(_KID, k=1.45, hair="short", hair_color=_hex("#3A2A1F"), shirt=_hex("#E07A5F"), expr="bored",
+                    legacy=(47, 58, 68, 73)),                               # engine `anh`, scaled 1.15 -> 1.45
+    # adults with no engine design of their own: Mọt (engine `mot` / `mot2`) -------------------------
+    "MOM": dict(_MOT),
+    "DAD": dict(_MOT),
+    "TEACHER": dict(_MOT),
+    "VENDOR": dict(_MOT, expr="happy"),
 }
 # script speaker name -> spec key
 SPEAKER_TO_CHAR = {"MUI": "MUI", "OLD MUI": "OLD_MUI", "HAI": "HAI", "TUN": "TUN", "TI": "TI", "MOM": "MOM",
@@ -393,6 +393,14 @@ def draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=0.0, f
             for side in (-1, 1):
                 sh, e, h = arms[side]
                 cv.line([sh, e, h], s.get("arm_color", INK), 7)
+            if s.get("polo"):             # engine: short sleeves along the upper arm, white trim at the hem
+                for side in (-1, 1):
+                    sh, e, _h = arms[side]
+                    ua = math.degrees(math.atan2(e[1] - sh[1], e[0] - sh[0]))
+                    with cv.at(sh[0], sh[1], 1, rot=ua):
+                        cv.poly([(-4, -10), (25, -9), (25, 9), (-4, 10)], fill=s["shirt"], outline=None)
+                        cv.line([(20, -8), (20, 8)], WHITE, 3)
+                        cv.line([(-1, -10), (25, -9), (25, 9), (-1, 10)], INK, 4.5)
             for side in (-1, 1):
                 h = arms[side][2]
                 cv.circle(h[0], h[1], 11, fill=s["skin"], ow=4)
@@ -511,6 +519,23 @@ def _draw_torso(cv, s, g):
     elif neck == "scarf":
         cv.poly([(-28 * wf, -192), (28 * wf, -192), (6, -150), (0, -138), (-6, -150)],
                 fill=s.get("scarf_color", _hex("#D62828")), ow=4)
+    if s.get("polo"):                     # engine: polo collar with white trim + red chest logo
+        for fl in (((-22, -192), (-1, -191), (-10, -170)), ((1, -191), (22, -192), (10, -170))):
+            cv.poly(list(fl), fill=shirt, ow=4)
+        cv.line([(-18, -189), (-10, -174)], WHITE, 2.5)
+        cv.line([(18, -189), (10, -174)], WHITE, 2.5)
+        cv.rect(-18, -168, -8, -161, fill=_POLO_RED, ow=2.5, radius=1.5)
+    if neck == "lanyard":                 # engine: navy strap with a red stripe, white ID card
+        with cv.at(4, -188):
+            for side in (-1, 1):
+                strap = [(side * 12, 0), (side * 2, 38)]
+                cv.line(strap, INK, 9)
+                cv.line(strap, _hex("#1B2F7A"), 5)
+                cv.line(strap, _POLO_RED, 1.6)
+            cv.rect(-11, 35, 11, 65, fill=WHITE, ow=3.5, radius=3)
+            cv.rect(-9.3, 37, 9.3, 44, fill=_POLO_RED, outline=None)
+            cv.line([(-6, 51), (6, 51)], _hex("#9AA6B5"), 2.5)
+            cv.line([(-6, 57), (3, 57)], _hex("#9AA6B5"), 2.5)
     if s.get("badge"):
         cv.circle(16 * wf, -160, 6, fill=P.GOLD, ow=3)
     if bottom == "dress" and s.get("bow_color") and s.get("skirt"):
@@ -908,7 +933,7 @@ def draw_dog(cv, x, y, scale=1.0, flip=False, pose="stand", t=0.0, color=(222, 1
 
 # ------------------------------------------------------------------ vendor extras
 def draw_vendor(cv, x, y, scale=1.0, flip=False, t=0.0, walking=True, steam=True):
-    """Street vendor woman (nón lá) carrying a gánh (shoulder pole with two baskets)."""
+    """Street vendor (drawn as Mọt, the engine `mot` design) carrying a gánh (shoulder pole with two baskets)."""
     pose = "walk_carry" if walking else "carry"
     a = draw_character(cv, "VENDOR", x, y, scale, pose=pose, t=t, flip=flip)
     g = _geom(char_spec("VENDOR"))

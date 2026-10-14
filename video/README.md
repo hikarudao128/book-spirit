@@ -137,9 +137,13 @@ anchors = draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=
   are drawn in engine units and scaled by `k * 0.42` px; outlines are ink `#1D1D1F`-ish `INK`.
 * Facing: the face is in 3/4 view looking right; `flip=True` mirrors the figure, and the face also
   turns toward `look` when `|look[0]| >= 0.25`.
-* Sizes at scale 1 (to the top of the hair): Mui 182, Hai 212 (stork legs), Ti 171, Tun 167, KID 163,
-  His Kid 254; adults Old Mui 422, Mom 439, Dad 448, Teacher 435, Vendor 451 (with hat). Adults are
-  roughly 2.4x a kid, so put them low or off-frame to get the "only see up to the chest" framing.
+* Only the engine's own designs are used (engine.js `CHARS`): MUI = `mui`, HAI = `haico`, TI = `tisun`,
+  TUN = `tun`, OLD_MUI = `muilon`, HIS_KID = `anh`, KID = `em`, and every adult without a design of their
+  own (MOM, DAD, TEACHER, VENDOR) is Mọt (`mot`/`mot2`: spiky navy hair, blue polo, lanyard). Heights
+  differ from the engine only by a uniform scale (k).
+* Sizes at scale 1 (to the top of the hair): Mui 182, Hai 212 (stork legs), Ti 171, Tun 154, KID 142,
+  His Kid 206; Old Mui 300; Mom/Dad/Teacher/Vendor 354. Adults are about 1.65-2x a kid; put them low
+  or off-frame to get the "only see up to the chest" framing.
 * `expression`: `neutral, bored, deadpan, happy, smug, shocked, angry, sad, scared, proud`. Each
   character has a default: Mui bored, Hai smug, Tun and Ti happy.
 * `mouth_open`: 0..1. Pass `ctx.mouth(SPEAKER, t)`.
@@ -159,16 +163,16 @@ anchors = draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=
   speech bubbles, custom props and labels. Inside a camera, convert them back with
   `world = (screen - (640, 360)) / zoom + cam`.
 * Signature features: Mui has the yellow shirt and the brown tuft; his default "bored" face has heavy
-  half-lidded eyes. Ti (pink shirt, bob, red bow) always shows her two missing front teeth when smiling
-  or talking. Hai (brown shirt, black short hair, band-aid on the far cheek) has 1.75x stork legs. Tun
-  (lilac shirt, black topknot) has slightly bigger eyes. Old Mui is grown Mui: same hair colour combed
-  neat with grey temples, eye bags, grey shirt, navy tie, a small belly (`mustache=True` via `variant`
-  if wanted). Legacy `variant` keys (`head_r`, `leg`, `torso_h`, `torso_w`, `hair="bowl"` …) are
-  translated to the new proportions.
+  half-lidded eyes. Ti (pink shirt, bob) always shows her two missing front teeth when smiling or
+  talking. Hai (brown shirt, black short hair) has 1.75x stork legs. Tun: lilac shirt, black topknot.
+  Old Mui (`muilon`): neat brown hair, eye bags, grey shirt, navy tie (`mustache=True` via `variant`
+  if wanted). Adults (Mọt): blue polo with collar, short sleeves and a lanyard ID card. Legacy
+  `variant` keys (`head_r`, `leg`, `torso_h`, `torso_w`, `hair="bowl"` …) are translated to the new
+  proportions.
 
 `draw_dog(cv, x, y, scale, flip=False, pose="stand"|"run"|"sit"|"wag", t, color, expression, mouth_prop=None|"notebook")`
 draws a side-view street dog facing right.
-`draw_vendor(cv, x, y, scale, flip, t, walking=True, steam=True)` draws a street vendor in a nón lá with a gánh.
+`draw_vendor(cv, x, y, scale, flip, t, walking=True, steam=True)` draws the vendor (Mọt design, no hat) carrying a gánh.
 
 ### `backgrounds.py`
 `draw_sky(cv, t, top, bottom, sun=(x,y)|None, clouds)` is screen space. Everything below is drawn in world
