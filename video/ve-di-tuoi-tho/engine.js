@@ -73,9 +73,10 @@
     bob: 'M -72 -228 Q -80 -344 0 -346 Q 80 -344 74 -228 L 60 -228 Q 62 -298 30 -300 Q 0 -296 -40 -306 Q -58 -298 -58 -228 Z',
     topknot: 'M -64 -284 Q -60 -336 0 -338 Q 62 -336 66 -286 Q 0 -308 -64 -284 Z M -20 -352 a 22 22 0 1 0 40 0 a 22 22 0 1 0 -40 0 Z',
   };
+  const POLO = '#1E4FC2', POLO_RED = '#E03A3E';   // áo polo xanh của Mọt
   const CHARS = {
-    mot:    { k: 1.8, hair: 'spiky', hairC: '#263859', shirt: '#2A9D8F', neck: 'bookmark' },
-    mot2:   { k: 1.8, hair: 'spiky', hairC: '#263859', shirt: '#2A9D8F', neck: 'bookmark' },
+    mot:    { k: 1.8, hair: 'spiky', hairC: '#263859', shirt: POLO, polo: true, neck: 'lanyard' },
+    mot2:   { k: 1.8, hair: 'spiky', hairC: '#263859', shirt: POLO, polo: true, neck: 'lanyard' },
     motnho: { k: 1.3, hair: 'spiky', hairC: '#263859', shirt: '#2A9D8F', neck: 'scarf' },
     mui:    { k: 1.25, hair: 'tuft', hairC: '#4A3426', shirt: '#F4C542' },
     muilon: { k: 1.75, hair: 'neat', hairC: '#4A3426', shirt: '#6C7A89', neck: 'tie', bags: true },
@@ -172,10 +173,26 @@
     const up0 = mk('g', { transform: `translate(0 ${u})` }, g);
     const upper = mk('g', {}, up0);
     mk('path', { d: 'M -27 -190 L 27 -190 L 33 -112 Q 0 -106 -33 -112 Z', fill: d.shirt, stroke: INK, 'stroke-width': 6, 'stroke-linejoin': 'round' }, upper);
+    if (d.polo) {                         // cổ polo viền trắng + logo đỏ trên ngực
+      for (const fl of ['M -22 -192 L -1 -191 L -10 -170 Z', 'M 1 -191 L 22 -192 L 10 -170 Z']) {
+        mk('path', { d: fl, fill: d.shirt, stroke: INK, 'stroke-width': 4, 'stroke-linejoin': 'round' }, upper);
+      }
+      mk('path', { d: 'M -18 -189 L -10 -174 M 18 -189 L 10 -174', stroke: '#FFFFFF', 'stroke-width': 2.5, 'stroke-linecap': 'round' }, upper);
+      mk('rect', { x: -18, y: -168, width: 10, height: 7, rx: 1.5, fill: POLO_RED, stroke: INK, 'stroke-width': 2.5 }, upper);
+    }
     let tie = null;
     if (d.neck === 'bookmark') {
       tie = mk('g', {}, upper);
       mk('path', { d: 'M -7 0 L 7 0 L 7 50 L 0 41 L -7 50 Z', fill: '#F08A24', stroke: INK, 'stroke-width': 4, 'stroke-linejoin': 'round' }, tie);
+    } else if (d.neck === 'lanyard') {     // dây đeo thẻ: xanh đậm sọc đỏ, thẻ lắc theo thân
+      tie = mk('g', {}, upper);
+      const strap = 'M -12 0 L -2 38 M 12 0 L 2 38';
+      mk('path', { d: strap, stroke: INK, 'stroke-width': 9, 'stroke-linecap': 'round', fill: 'none' }, tie);
+      mk('path', { d: strap, stroke: '#1B2F7A', 'stroke-width': 5, 'stroke-linecap': 'round', fill: 'none' }, tie);
+      mk('path', { d: strap, stroke: POLO_RED, 'stroke-width': 1.6, fill: 'none' }, tie);
+      mk('rect', { x: -11, y: 35, width: 22, height: 30, rx: 3, fill: '#FFFFFF', stroke: INK, 'stroke-width': 3.5 }, tie);
+      mk('path', { d: 'M -9.3 37 L 9.3 37 L 9.3 44 L -9.3 44 Z', fill: POLO_RED }, tie);
+      mk('path', { d: 'M -6 51 L 6 51 M -6 57 L 3 57', stroke: '#9AA6B5', 'stroke-width': 2.5, 'stroke-linecap': 'round' }, tie);
     } else if (d.neck === 'tie') {
       tie = mk('g', {}, upper);
       mk('path', { d: 'M -7 0 L 7 0 L 10 56 L 0 68 L -10 56 Z', fill: '#2E3A59', stroke: INK, 'stroke-width': 4, 'stroke-linejoin': 'round' }, tie);
@@ -191,11 +208,21 @@
     const eyes = mk('g', {}, head), mouth = mk('g', {}, head);
     const arms = mk('g', { stroke: INK, 'stroke-width': 7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none' }, upper);
     const armL = mk('polyline', {}, arms), armR = mk('polyline', {}, arms);
+    let sleeves = null;
+    if (d.polo) {                         // tay áo ngắn, xoay theo cánh tay trên, viền trắng ở gấu
+      sleeves = ['L', 'R'].map(() => {
+        const sg = mk('g', {}, upper);
+        mk('path', { d: 'M -4 -10 L 25 -9 L 25 9 L -4 10 Z', fill: d.shirt }, sg);
+        mk('path', { d: 'M 20 -8 L 20 8', stroke: '#FFFFFF', 'stroke-width': 3 }, sg);
+        mk('path', { d: 'M -1 -10 L 25 -9 L 25 9 L -1 10', fill: 'none', stroke: INK, 'stroke-width': 4.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, sg);
+        return sg;
+      });
+    }
     const handL = mk('g', {}, upper), handR = mk('g', {}, upper);
     const fxg = mk('g', {}, L.fx);
     const r = rng(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
     const a = {
-      id, d, u, hip, g, legPath, upper, head, tie, book, eyesG: eyes, mouthG: mouth, armL, armR, handL, handR, fxg, r,
+      id, d, u, hip, g, legPath, upper, head, tie, book, sleeves, eyesG: eyes, mouthG: mouth, armL, armR, handL, handR, fxg, r,
       vis: false, x: 0, y: GROUND, flip: false, k: d.k, pop: 1, sq: 0, dy: 0, slideX: 0, lean: 0,
       arms: clonePose(POSES.dung), pose: 'dung', eyes: 'thuong', mouthRest: 'ngam', mouthOv: null, fakeTalk: false,
       blinkF: -100, nextBlink: sec(0.5) + Math.floor(r() * sec(2)), tieA: 0, tieV: 0, kicks: [], fx: [],
@@ -239,6 +266,10 @@
       const p = a.arms[side], sh = SH[side];
       a['arm' + side].setAttribute('points', `${sh[0]},${sh[1]} ${f1(p.e[0])},${f1(p.e[1])} ${f1(p.h[0])},${f1(p.h[1])}`);
       const ang = Math.atan2(p.h[1] - p.e[1], p.h[0] - p.e[0]) * 180 / Math.PI;
+      if (a.sleeves) {
+        const ua = Math.atan2(p.e[1] - sh[1], p.e[0] - sh[0]) * 180 / Math.PI;
+        a.sleeves[side === 'L' ? 0 : 1].setAttribute('transform', `translate(${sh[0]} ${sh[1]}) rotate(${f1(ua)})`);
+      }
       const hg = a['hand' + side];
       hg.setAttribute('transform', `translate(${f1(p.h[0])} ${f1(p.h[1])}) rotate(${f1(ang)})`);
       if (a.last['h' + side] !== p.s) { hg.innerHTML = handSVG(p.s); a.last['h' + side] = p.s; }

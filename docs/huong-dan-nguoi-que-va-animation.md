@@ -28,7 +28,7 @@ Chia chiều cao nhân vật làm 10 phần:
 | Bộ phận | Tỉ lệ | Ghi chú |
 |---------|-------|---------|
 | Đầu (kể cả tóc) | 4/10 | Đầu to là nơi chứa biểu cảm, phải đọc được khi nhân vật nhỏ ở góc màn hình |
-| Thân (áo) | 2/10 | Hình thang hoặc chữ nhật bo góc, có **một chi tiết chữ ký** (Vui Vẻ dùng túi đeo chéo; Mọt dùng dây đánh dấu sách màu cam) |
+| Thân (áo) | 2/10 | Hình thang hoặc chữ nhật bo góc, có **một chi tiết chữ ký** (Vui Vẻ dùng túi đeo chéo; Mọt trong video mặc áo polo xanh viền trắng, đeo thẻ sinh viên dây xanh sọc đỏ; bản demo HTML vẫn dùng dây đánh dấu sách màu cam) |
 | Chân | 4/10 | Hai nét đơn, giày hình bầu dục |
 | Tay | dài bằng thân + nửa đầu | Hai đoạn (vai–khuỷu–bàn tay), bàn tay tròn |
 
@@ -46,7 +46,7 @@ Mỗi bộ phận là một lớp riêng, có **điểm xoay (pivot)** đặt đ
 Mọt
 ├── chan-trai, chan-phai          pivot: hông
 ├── than                          pivot: hông
-│   └── day-danh-dau              pivot: cổ áo   (chuyển động phụ)
+│   └── day-the (demo: day-danh-dau)  pivot: cổ áo   (chuyển động phụ)
 ├── tay-trai, tay-phai            pivot: vai
 │   └── ban-tay  [nam | chi | v | xoe | ok]       (đổi hình, không xoay)
 └── dau                           pivot: cổ
