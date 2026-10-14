@@ -285,8 +285,9 @@ def phase_a(cv, t, b):
 
 def phase_c(cv, t, b, ctx):
     _paper(cv)
-    cx, cy, R = 640, 385, 200
-    TR = R - 100                    # Mui runs on an inner track
+    cx, cy, R = 640, 380, 240
+    TR = R - 135                    # Mui runs on an inner track
+    FOOT = 72                       # feet below the track point so the figure is centred on it
     th = _theta(t, b)
     spd = _speed(t, b)
     # node glow when the runner is at / near it
@@ -297,21 +298,21 @@ def phase_c(cv, t, b, ctx):
     draw_cycle(cv, t, b, cx, cy, R, (1, 1, 1), (1, 1, 1), glows)
     for k in range(36):             # dotted running track
         a = math.radians(k * 10)
-        cv.circle(cx + TR * math.cos(a), cy + TR * math.sin(a) + 36, 3, fill=(220, 205, 180), outline=None)
+        cv.circle(cx + TR * math.cos(a), cy + TR * math.sin(a) + FOOT, 4, fill=(220, 205, 180), outline=None)
     # runner trail
     if spd > 200:
         n = int(clamp((spd - 200) / 1400) * 18) + 3
         for k in range(n):
             a = math.radians(th - (k + 1) * clamp(spd / 24 / n, 0, 14))
-            rr = 12 * (1 - k / n) + 3
-            cv.circle(cx + TR * math.cos(a), cy + TR * math.sin(a) - 30, rr,
+            rr = 18 * (1 - k / n) + 4
+            cv.circle(cx + TR * math.cos(a), cy + TR * math.sin(a) - 10, rr,
                       fill=lerp_color(P.SHIRT_BLUE, P.CARD_BG, k / n), outline=None)
     a = math.radians(th)
     mx, my = cx + TR * math.cos(a), cy + TR * math.sin(a)
     vx = -math.sin(a)
     running = spd > 5
     dizzy = progress(t, b["repeat"] + 1.6, 1.0)
-    draw_character(cv, "MUI", mx, my + 38, 0.5, pose="run" if running else "stand", t=t * (1 + spd / 400),
+    draw_character(cv, "MUI", mx, my + FOOT, 0.76, pose="run" if running else "stand", t=t * (1 + spd / 400),
                    flip=vx < -0.05, expression="bored" if dizzy < 0.5 else "scared", blink=blink(t, 1),
                    look=(0, 0) if dizzy < 0.5 else (math.sin(t * 9), math.cos(t * 9)))
     # loop count

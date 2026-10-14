@@ -27,21 +27,22 @@ from lib.text import board, idea_card, label
 
 GROUND = 668            # stage: kids' feet
 KS = 1.3                # kid scale on stage
-SLOTS = {"HAI": 272, "TUN": 458, "MUI": 822, "TI": 1008}
+SLOTS = {"HAI": 315, "TUN": 478, "MUI": 802, "TI": 640}      # final line-up (Ti keeps the centre spot)
+PLAIN = {"HAI": 330, "TUN": 530, "MUI": 750, "TI": 950}     # plain-clothes line-up before the dash
 STAGE_CAM = (640, 480, 1.4)
 ORDER = ["HAI", "TUN", "MUI", "TI"]
 COSTUME = {
     "HAI": dict(outfit="police", pose="salute", expression="proud", props=()),
     "TUN": dict(outfit="flight", pose="present", expression="happy", props=()),
     "MUI": dict(outfit="principal", pose="hold", expression="deadpan", props=("pointer",)),
-    "TI": dict(outfit="snow_white", pose="wave", expression="happy", props=("crown",)),
+    "TI": dict(outfit="snow_white", pose="wave", expression="happy", props=("crown",), variant={"bow": False}),
 }
 JOB = {"HAI": "CHIEF OF POLICE", "TUN": "FLIGHT ATTENDANT", "MUI": "SCHOOL PRINCIPAL", "TI": "SNOW WHITE"}
 
 # house set
 HFLOOR = 640
 DOOR_X = 1085
-MUI_X, TI_X, TUN_X = 315, 520, 830
+TI_X, MUI_X, TUN_X = 345, 545, 830
 WALL = (244, 214, 170)
 
 
@@ -95,7 +96,7 @@ def audio_cues(ctx):
 def _kid_on_stage(t, ctx, b, name):
     """-> (x, y, scale, layer, kwargs) for a kid on the stage, or None while hidden."""
     i = ORDER.index(name)
-    slot = SLOTS[name]
+    slot = PLAIN[name]
     out = b["out"][name]
     mouth = ctx.mouth(name, t)
     if t < b["dash"] + i * 0.06:                         # in plain clothes, lined up
@@ -114,7 +115,8 @@ def _kid_on_stage(t, ctx, b, name):
             expression="happy" if name != "MUI" else "bored")
     # costume
     c = COSTUME[name]
-    kw = dict(outfit=c["outfit"], props=c["props"], t=t + i, mouth_open=mouth)
+    kw = dict(outfit=c["outfit"], props=c["props"], t=t + i, mouth_open=mouth, variant=c.get("variant"))
+    slot = SLOTS[name]
     step = ease_out_back(progress(t, out, 0.36), 1.4)
     x, y, sc = 640, lerp(GROUND - 46, GROUND, step), KS * lerp(0.86, 1.0, step)
     layer = "front" if step > 0.25 else "behind"
@@ -194,28 +196,43 @@ def _stage_front(t, b, cv, kids):
 
 
 def _sticker(t, b, cv, anchors):
-    """NOT A JOB sticker over Ti (screen space)."""
-    if "TI" in anchors and t >= b["notjob"]:
-        hx, hy = anchors["TI"]["top"]
-        sx, sy = 640, hy - 50
-        s = pop(t, b["notjob"], 0.25)
-        fall = progress(t, b["isnow"] + 0.1, 0.7)
-        gold = fall > 0.05
-        label(cv, sx + 48, sy, "A JOB" + ("!" if gold else ""), 30, fill=INK if gold else P.WHITE,
-              bg=P.HIGHLIGHT if gold else P.ACCENT, scale=s, rot=-4)
-        if fall < 1:
-            fx = sx - 54 - 60 * fall
-            fy = sy + 520 * fall * fall
-            label(cv, fx, fy, "NOT", 30, fill=P.WHITE, bg=P.ACCENT, scale=s, rot=-4 - 160 * fall)
-        sparkle(cv, sx + 130, sy - 30, 26, t, b["isnow"] + 0.3)
-        sparkle(cv, anchors["TI"]["head"][0] + 50, anchors["TI"]["top"][1] - 4, 20, t, b["isnow"] + 0.45)
+    """NOT A JOB sticker slapped across Ti's chest (screen space); on "It is now" the NOT half
+    peels off and falls, and the rest turns into a gold A JOB! badge."""
+    if "TI" not in anchors or t < b["notjob"]:
+        return
+    from lib.text import text_width
+    a = anchors["TI"]
+    size = 26
+    cx, cy = a["chest"][0] + 4, a["chest"][1] - 2
+    s = pop(t, b["notjob"], 0.25)
+    fall = progress(t, b["isnow"] + 0.1, 0.7)
+    gold = fall > 0.05
+    rot = -8
+    w_not = text_width("NOT", size, "extrabold") + 24
+    w_job = text_width("A JOB!", size, "extrabold") + 24
+    total = w_not + w_job - 6
+    # the two halves sit edge to edge, centred on the chest, along the sticker's tilt
+    ca, sa = math.cos(math.radians(rot)), math.sin(math.radians(rot))
+    def along(d):
+        return cx + d * ca, cy + d * sa
+    jx, jy = along(-total / 2 + w_not - 6 + w_job / 2)
+    label(cv, jx, jy, "A JOB" + ("!" if gold else ""), size, fill=INK if gold else P.WHITE,
+          bg=P.HIGHLIGHT if gold else P.ACCENT, pad=(12, 6), scale=s, rot=rot)
+    if fall < 1:
+        nx, ny = along(-total / 2 + w_not / 2)
+        fx = nx - 70 * fall
+        fy = ny + 420 * fall * fall
+        label(cv, fx, fy, "NOT", size, fill=P.WHITE, bg=P.ACCENT, pad=(12, 6), scale=s,
+              rot=rot - 150 * fall)
+    sparkle(cv, jx + w_job / 2 + 6, jy - 24, 24, t, b["isnow"] + 0.3)
+    sparkle(cv, a["head"][0] + 46, a["top"][1] - 4, 20, t, b["isnow"] + 0.45)
 
 
 # ------------------------------------------------------------------ house part
 def _house_cam(t, b):
     L = b["L"]
-    wide = (716, 468, 1.36)
-    on_ti = (TI_X + 70, 470, 1.55)
+    wide = (728, 446, 1.45)
+    on_ti = (TI_X + 62, 498, 2.0)
     on_tun = (TUN_X + 20, 470, 1.6)
     on_mui = (MUI_X + 190, 470, 1.5)
     keys = [(b["house"], wide), (L[10].start + 0.1, wide), (L[10].start + 0.45, on_ti, 0.35),
@@ -301,10 +318,10 @@ def _render_house(t, ctx, b, cv):
 
     # role labels (screen space, above the heads), popped on "play house"
     for i, (a, txt, col) in enumerate(((a_mui, "DAD", P.ACCENT2), (a_ti, "MOM", P.ACCENT))):
-        s = pop(t, b["roles"] + i * 0.12, 0.3) * (1 - progress(t, L[10].start - 0.2, 0.2))
+        s = pop(t, b["roles"] + i * 0.12, 0.3) * (1 - progress(t, b["rules"] - 0.25, 0.2))
         if s > 0.01:
             label(cv, a["top"][0], a["top"][1] - 40, txt, 24, fill=P.WHITE, bg=col, scale=s)
-    s = pop(t, b["roles"] + 0.24, 0.3) * (1 - progress(t, L[10].start - 0.2, 0.2))
+    s = pop(t, b["roles"] + 0.24, 0.3) * (1 - progress(t, b["rules"] - 0.25, 0.2))
     if s > 0.01 and bolt <= 0:
         label(cv, a_tun["top"][0], a_tun["top"][1] - 34, "CHILD", 24, bg=P.HIGHLIGHT, scale=s)
 

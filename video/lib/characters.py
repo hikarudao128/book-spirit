@@ -155,9 +155,11 @@ SPECS = {
                missing_teeth=True, bow=True, legacy=(39, 46, 54, 58)),   # engine `tisun`
     "TUN": dict(_KID, k=1.06, hair="topknot", hair_color=_hex("#2B2B2B"), shirt=_hex("#B9A7E6"), expr="happy",
                 eye_scale=1.18, legacy=(40, 46, 54, 58)),   # engine `tun` (a bit taller)
-    "OLD_MUI": dict(_ADULT, k=1.85, legs=2.2, torso=1.9, hair="neat", hair_color=_hex("#4A3426"),
+    # engine `muilon` proportions exactly (legs 1, torso 1, width 1); height by uniform k only
+    # (k 2.1 -> ~1.7x Mui). legacy tuple = the old pixel geometry at these proportions.
+    "OLD_MUI": dict(_ADULT, k=2.1, legs=1.0, torso=1.0, width=1.0, hair="neat", hair_color=_hex("#4A3426"),
                     shirt=_hex("#6C7A89"), neck="tie", tie_color=_hex("#2E3A59"), bags=True, grey_temples=True,
-                    belly=True, expr="bored", legacy=(57, 170, 150, 118)),  # engine `muilon`
+                    belly=True, expr="bored", legacy=(57, 78, 81, 96)),  # engine `muilon`
     "KID": dict(_KID, k=1.15, hair="short", hair_color=_hex("#3A2A1F"), shirt=_hex("#E07A5F"), expr="neutral",
                 legacy=(40, 46, 54, 58)),                                   # engine `anh` (recolourable)
     # new cast in the same style ------------------------------------------------------------

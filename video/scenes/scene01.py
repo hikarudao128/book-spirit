@@ -19,8 +19,28 @@ from lib.text import label, name_tag
 
 STEP_X = 1100
 GROUND = 560
-KIDS = [("HAI", 330, 0.85, P.ACCENT), ("TUN", 500, 0.85, P.ACCENT2), ("TI", 640, 0.85, (250, 170, 40))]
-KITE_POS = [(250, 150), (560, 95), (790, 170)]
+KIDS = [("HAI", 330, 0.95, P.ACCENT), ("TUN", 500, 0.95, P.ACCENT2), ("TI", 650, 0.95, (250, 170, 40))]
+KITE_POS = [(450, 185), (610, 110), (800, 200)]
+STRING = (70, 60, 60)
+
+
+def _stoop(cv):
+    """Two-step concrete stoop with visible treads (so sitting on it reads), centred on STEP_X."""
+    from lib.core import lerp_color
+    base = GROUND + 44
+    top_c = lerp_color(P.STEP, (255, 255, 255), 0.35)
+    face_c = P.STEP
+    soft = (120, 100, 90)
+    # lower step: tread (top surface) + riser
+    cv.poly([(STEP_X - 130, base - 26), (STEP_X + 130, base - 26), (STEP_X + 118, base - 36),
+             (STEP_X - 118, base - 36)], fill=top_c, outline=soft, ow=2.4)
+    cv.rect(STEP_X - 130, base - 26, STEP_X + 130, base, fill=face_c, outline=soft, ow=2.6)
+    # upper step
+    cv.poly([(STEP_X - 104, base - 66), (STEP_X + 104, base - 66), (STEP_X + 94, base - 80),
+             (STEP_X - 94, base - 80)], fill=top_c, outline=soft, ow=2.4)
+    cv.rect(STEP_X - 104, base - 66, STEP_X + 104, base - 36, fill=lerp_color(face_c, (255, 255, 255), 0.12),
+            outline=soft, ow=2.6)
+    return base - 72, base - 31          # seat y (middle of the upper tread), lower tread y
 
 
 def beats(ctx):
@@ -92,7 +112,7 @@ def _icon(cv, kind, x, y, s, slash):
 def _camera(t, b):
     pan = lerp(560, 700, ease_in_out(clamp(t / b["cut"])))
     wide = (pan, 360, 1.0)
-    close = (STEP_X - 20, 476, 2.6)
+    close = (STEP_X - 30, 470, 2.6)
     p = ease_in_out(progress(t, b["cut"], b["zoom_end"] - b["cut"]))
     p = 1 - (1 - p) ** 3 if p < 1 else 1
     cx = lerp(wide[0], close[0], p)
@@ -116,7 +136,8 @@ def render_frame(t, ctx):
 
     cx, cy, z = _camera(t, b)
     with cv.camera(cx, cy, z):
-        draw_alley(cv, t, step_x=STEP_X, ground_y=GROUND)
+        draw_alley(cv, t, ground_y=GROUND)
+        seat_y, _ = _stoop(cv)
 
         # kites rise on "Kites."
         rise = ease_out_back(progress(t, b["kites"] - 0.3, 1.1), 1.2)
@@ -128,8 +149,8 @@ def render_frame(t, ctx):
         happy_jump = progress(t, b["no1"], 0.01) * (1 - progress(t, b["cut"], 0.01))
         for i, (nm, x, sc, col) in enumerate(KIDS):
             jump = -abs(math.sin(t * 5 + i)) * 10 * happy_jump
-            a = draw_character(cv, nm, x, GROUND + 120 + jump, sc, pose="point_up", t=t + i,
-                               expression="happy", look=(0.2, -0.8), mouth_open=0.0)
+            a = draw_character(cv, nm, x, GROUND + 120 + jump, sc, pose="point", t=t + i,
+                               expression="happy", look=(0.3, -0.8), mouth_open=0.0)
             kid_hands[nm] = a["hand_r"]
         for i, (nm, x, sc, col) in enumerate(KIDS):
             kx, ky = KITE_POS[i]
@@ -139,32 +160,38 @@ def render_frame(t, ctx):
                 # hand anchor is in screen coords; convert back to world for the camera frame
                 wx = (hx - 640) / z + cx
                 wy = (hy - 360) / z + cy
-                draw_kite(cv, kx, ky, 34, col, t, tail=4, seed=i, string_to=(wx, wy))
+                kx_s = kx + math.sin(t * 1.6 + i) * 8
+                # string: from the kite's bridle down to the kid's fist, with a soft sag
+                ex, ey = kx_s, ky + 40
+                mx, my = (ex + wx) / 2 + 26, (ey + wy) / 2 + 30
+                cv.curve((ex, ey), (mx, my), (wx, wy), STRING, 2.6)
+                draw_kite(cv, kx, ky, 44, col, t, tail=4, seed=i)
 
         # Mui on the step, bored. Looks at camera on "Thank you, Mui."
         look_p = ease_in_out(progress(t, b["look"], 0.7))
-        look = (lerp(0.75, 0.0, look_p), lerp(0.35, 0.0, look_p))
+        look = (lerp(-0.75, 0.0, look_p), lerp(0.35, 0.0, look_p))
         expr = "deadpan" if look_p > 0.5 else "bored"
         mouth = ctx.mouth("MUI", t)
-        draw_character(cv, "MUI", STEP_X, GROUND - 26, 1.0, pose="sit_chin_on_hand", t=t, expression=expr,
-                       look=look, mouth_open=mouth)
+        # faces left (toward the kids and the falling kite); sits on the upper tread, feet on the lower one
+        draw_character(cv, "MUI", STEP_X + 14, seat_y, 1.0, pose="sit_chin_on_hand", t=t, expression=expr,
+                       look=look, mouth_open=mouth, flip=True)
 
         # the dog trots over and sits by the step; stops wagging when the music dies
         dog_run = progress(t, 5.4, 4.6)
         if dog_run < 1:
-            dx = lerp(-120, 1250, dog_run)
+            dx = lerp(-120, 1222, dog_run)
             if dog_run > 0.85:   # last stretch: up to the step
                 pass
             draw_dog(cv, dx, GROUND + 150, 0.75, pose="run", t=t)
         else:
-            draw_dog(cv, 1262, GROUND + 50, 0.75, flip=True, pose="sit" if t < b["cut"] else "stand",
+            draw_dog(cv, 1222, GROUND + 50, 0.75, flip=True, pose="sit" if t < b["cut"] else "stand",
                      t=t if t < b["cut"] else 0.0, expression="happy" if t < b["cut"] else "neutral")
 
         # a kite gives up and lands next to Mui
         kp = progress(t, b["kite_fall"], b["kite_land"] - b["kite_fall"])
         if kp > 0:
-            fx = lerp(STEP_X - 120, STEP_X - 175, kp) + math.sin(kp * 9) * 22 * (1 - kp)
-            fy = lerp(300, GROUND + 4, kp ** 1.6)
+            fx = lerp(STEP_X - 90, STEP_X - 150, kp) + math.sin(kp * 9) * 22 * (1 - kp)
+            fy = lerp(300, GROUND + 22, kp ** 1.6)
             with cv.at(fx, fy, 1, rot=lerp(0, 75, kp)):
                 draw_kite(cv, 0, 0, 26, P.ACCENT, 0 if kp >= 1 else t, tail=3, seed=1)
 
