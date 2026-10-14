@@ -107,10 +107,10 @@ TOWERS = [(-120, 170, 560, (200, 214, 226)), (180, 140, 470, (170, 190, 214)), (
           (700, 150, 520, (186, 206, 220)), (930, 180, 700, (206, 200, 214)), (1250, 160, 560, (190, 214, 206)),
           (1480, 200, 620, (214, 206, 190))]
 SIGNS = sign_layout(21, -150, 1650, GROUND, n=30)
-TEEN = dict(kind="teen", leg=92, torso_h=88, torso_w=68, arm_w=15, leg_w=18, hand_r=9, head_r=41, cheeks=False,
-            bottom="pants", pants=(60, 70, 100), shirt=(240, 240, 236), neck=4, shoes=(240, 240, 240))
-YOUNG = dict(hair="bowl", hair_color=P.HAIR, mustache=False, belly=False, torso_w=104, shirt=P.SHIRT_BLUE,
-             pants=P.NAVY, head_r=55)
+# growing up = Mui's own designs, scaled uniformly: kid `mui` -> bigger `mui` -> `muilon` without the eye bags
+# -> `muilon`
+TEEN = dict(k=1.25 * 1.3)
+YOUNG = dict(bags=False)
 
 
 def _lapse(t, b):
@@ -226,7 +226,7 @@ def phase1_overlay(cv, t, b):
 
 
 # ================================================================== phase 2: kitchen
-SIS = dict(hair="bob", bottom="dress", shirt=(110, 200, 190), hair_color=P.HAIR, eye_scale=1.05)
+SIS = dict(shirt=(110, 200, 190))          # generic KID (engine `em`), recoloured only
 
 
 def _phone_hands(cv, x, y, t, skin, seed, glow=True):
@@ -376,10 +376,9 @@ def _boring_stamp(cv, t, b, chest):
 
 
 # ================================================================== phase 3: book
-CROWD = [("VENDOR", None, 0.5), ("KID", dict(shirt=(250, 190, 110)), 0.85), ("MOM", None, 0.5), ("TI", None, 0.85),
-         ("DAD", None, 0.5), ("MUI", None, 0.85), ("TEACHER", None, 0.5), ("HAI", None, 0.85),
-         ("OLD_MUI", None, 0.64), ("TUN", None, 0.85), ("HIS_KID", None, 0.75),
-         ("KID", dict(hair="bob", bottom="dress", shirt=(160, 120, 220)), 0.85)]
+CROWD = [("KID", dict(shirt=(250, 190, 110)), 0.85), ("TI", None, 0.85), ("DAD", None, 0.72), ("MUI", None, 0.85),
+         ("HAI", None, 0.85), ("OLD_MUI", None, 0.85), ("TUN", None, 0.85), ("HIS_KID", None, 0.85),
+         ("KID", dict(shirt=(160, 120, 220)), 0.85)]
 
 
 def _rays(cv, t, cx, cy, c1, c2):

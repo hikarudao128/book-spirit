@@ -34,7 +34,7 @@ DEF_X = (1520, 1690)
 # giant adults for the "parents found out" shot: (name, x, scale, shirt) - shoulders sit at the top edge
 # of the frame so only torsos, hanging arms and the long legs show; they form a dark wall behind the kids
 ADULT_TONE = (34, 30, 38)
-ADULTS = [("DAD", 150, 2.70), ("MOM", 478, 2.55), ("DAD", 800, 2.62), ("MOM", 1128, 2.72)]
+ADULTS = [("DAD", 150, 4.25), ("MOM", 478, 4.0), ("DAD", 800, 4.1), ("MOM", 1128, 4.3)]
 KIDS_SMALL = [("HAI", 470, False), ("MUI", 585, False), ("TUN", 700, True), ("TI", 812, True)]
 
 
@@ -258,24 +258,24 @@ def _render_dark(t, ctx, b, cv):
         cv.line([(-300, 610), (1580, 610)], INK, 3)
         for i, (nm, x, sc) in enumerate(ADULTS):
             breathe = math.sin(t * 1.6 + i * 1.3) * 3
-            feet = -14 + (318 if nm == "DAD" else 298) * sc + breathe     # shoulders just above the frame
+            feet = -24 + 174 * sc + breathe      # shoulders (and the big heads) just above the frame
             a = draw_character(cv, nm, x, feet, sc, pose="stand", colors=sil, t=0, blink=1.0)
-            hands.append((to_world(a["hand_r"], cam), to_world(a["hand_l"], cam), sc))
+            hands.append((to_world(a["hand_r"], cam), to_world(a["hand_l"], cam), a["head_r"] * 11 / 70))
     bg = grade(cv.finish(), sat=0.35, mul=(0.8, 0.77, 0.84))
     cv2 = ctx.canvas((0, 0, 0))
     cv2.paste(bg, 0, 0)      # paste() upsamples the finished frame to the canvas resolution
     with cv2.camera(*cam):
         # the cane hangs from the first adult's right hand, the ruler from the last one's left hand
-        (hx, hy), _, sc = hands[0]
+        (hx, hy), _, hr = hands[0]
         sway = math.sin(t * 1.3) * 1.5
-        draw_stick(cv2, hx + 30 * sc / 2.6, hy + 330, length=350, rot=-6 + sway, color=(178, 136, 84), w=9)
-        cv2.circle(hx, hy, 11 * sc * 0.42 * 2.4, fill=ADULT_TONE, ow=3)
-        _, (lx, ly), sc = hands[3]
+        draw_stick(cv2, hx + 30, hy + 330, length=350, rot=-6 + sway, color=(178, 136, 84), w=9)
+        cv2.circle(hx, hy, hr, fill=ADULT_TONE, ow=3)
+        _, (lx, ly), hr = hands[3]
         with cv2.at(lx, ly, 1, rot=4 + sway):
             cv2.rect(-11, -6, 11, 250, fill=(226, 200, 120), radius=3, ow=3)
             for k in range(1, 12):
                 cv2.line([(-11, k * 21), (-1 if k % 2 else 3, k * 21)], INK, 2, round_caps=False)
-        cv2.circle(lx, ly, 11 * sc * 0.42 * 2.4, fill=ADULT_TONE, ow=3)
+        cv2.circle(lx, ly, hr, fill=ADULT_TONE, ow=3)
         for i, (nm, x, fl) in enumerate(KIDS_SMALL):
             jit = wiggle(t, 7, 1.4, seed=i)
             draw_character(cv2, nm, x + jit, 708, 1.22, expression="scared", look=(0, -0.95), flip=fl,
