@@ -98,7 +98,7 @@ def polaroid(cv, draw_fn, cx, cy, w=880, h=495, rot=0.0, scale=1.0, caption="", 
         with cv.at(cx + 9 * s, cy + 12 * s, 1, rot=rot):
             cv.poly(corners, fill=(40, 30, 30), outline=None)
     if abs(rot) > 0.05:
-        im = im.convert("RGBA").rotate(-rot, resample=Image.BICUBIC, expand=True)
+        im = im.convert("RGBA").rotate(-rot, resample=Image.NEAREST, expand=True)
     X, Y = cv.to_screen(cx, cy)
     px, py = int(round(X * ss - im.width / 2)), int(round(Y * ss - im.height / 2))
     cv.img.paste(im, (px, py), im if im.mode == "RGBA" else None)
@@ -338,13 +338,15 @@ def badge(cv, x, y, s, text, size=70, fill=P.ACCENT, ink=P.WHITE, r=56):
         cv.text(0, 2, text, size, ink, "black", stroke=3, stroke_fill=INK)
 
 
-def stamp(cv, x, y, text, s=1.0, rot=-12, color=P.ACCENT, size=48):
-    """Rubber-stamp text box (red outline + red letters)."""
+def stamp(cv, x, y, text, s=1.0, rot=-12, color=P.ACCENT, size=48, fill=None):
+    """Rubber-stamp text box (red outline + red letters); fill=colour gives it a solid backing."""
     if s <= 0.01:
         return
     w = text_width(text, size, "black") + 50
     h = size * 1.4
     with cv.at(x, y, s, rot=rot):
+        if fill is not None:
+            cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=fill, outline=None, radius=10)
         cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=None, outline=color, ow=7, radius=10)
         cv.text(0, 2, text, size, color, "black")
 

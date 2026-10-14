@@ -28,7 +28,7 @@ from lib.text import label, name_tag
 BG = (30, 34, 58)
 FLOOR = (44, 48, 80)
 FLOOR_Y = 600
-INTRO_X = 830
+INTRO_X = 880
 GROUP = [("HAI", 280), ("MUI", 530), ("TUN", 780), ("TI", 1020)]
 
 
@@ -139,19 +139,19 @@ def shot_hai(t, ctx, b, cv):
     broken = t >= b["never"] + 0.3
     fall = progress(t, b["never"], 0.3)
     if 0 < fall < 1:
-        with cv.at(1080 + fall * 20, FLOOR_Y + 40 - 170 * (1 - fall ** 2), 1, rot=fall * 70):
+        with cv.at(1100 + fall * 20, FLOOR_Y + 40 - 170 * (1 - fall ** 2), 1, rot=fall * 70):
             _pot(cv, 0, 0, False)
     elif not broken:
-        _pot(cv, 1080, FLOOR_Y - 130, False)
-    cv.rect(1020, FLOOR_Y - 130, 1140, FLOOR_Y + 40, fill=P.WOOD, ow=3.4)   # crate
-    cv.line([(1020, FLOOR_Y - 45), (1140, FLOOR_Y - 45)], P.WOOD_DARK, 4)
+        _pot(cv, 1100, FLOOR_Y - 130, False)
+    cv.rect(1040, FLOOR_Y - 130, 1160, FLOOR_Y + 40, fill=P.WOOD, ow=3.4)   # crate
+    cv.line([(1040, FLOOR_Y - 45), (1160, FLOOR_Y - 45)], P.WOOD_DARK, 4)
     if broken:
-        _pot(cv, 1170, FLOOR_Y + 70, True)
+        _pot(cv, 1150, FLOOR_Y + 60, True)
     look = (0, 0)
     if b["sneaky"] <= t < b["never"]:
         look = (math.copysign(0.9, math.sin((t - b["sneaky"]) * 14)), 0)
     pose = "run" if arrive < 1 else ("shrug" if t >= b["sorry"] - 0.1 else "stand")
-    draw_character(cv, "HAI", x, FLOOR_Y + 60, 2.6, pose=pose, expression="smug", t=t, look=look,
+    draw_character(cv, "HAI", x, FLOOR_Y + 60, 2.25, pose=pose, expression="smug", t=t, look=look,
                    lean=-14 if arrive < 1 else 0)
 
 
