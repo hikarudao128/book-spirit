@@ -3,7 +3,7 @@
 Kịch bản review sách dạng hoạt hình kể chuyện, áp dụng các kỹ thuật trong [`../docs/phan-tich-ke-chuyen-oversimplified.md`](../docs/phan-tich-ke-chuyen-oversimplified.md). Lời dẫn và lời thoại bằng tiếng Anh, chỉ dẫn hình ảnh bằng tiếng Việt.
 
 - **Sách:** *Cho tôi xin một vé đi tuổi thơ*, Nguyễn Nhật Ánh, NXB Trẻ, 2008. Bản tiếng Anh: *Ticket to Childhood*, William Naythons dịch, Overlook Press, 2014.
-- **Thời lượng dự kiến:** khoảng 7 phút (khoảng 1.050 chữ lời đọc, tốc độ 150 chữ/phút).
+- **Thời lượng dự kiến:** khoảng 5–6 phút (khoảng 760 chữ lời đọc ở tốc độ 150 chữ/phút, cộng thời gian cho gag hình và khoảng lặng).
 - **Giọng đọc:** một người dẫn (NARRATOR) nói nhanh, khô, hay nói giảm. Nhân vật lồng tiếng giọng trẻ con.
 - **Ký hiệu:** `[HÌNH]` là chỉ dẫn hình ảnh, `NARRATOR` là lời dẫn, tên in hoa là lời nhân vật. Ghi chú trong ngoặc như *(kỹ thuật 4)* trỏ tới mục tương ứng trong tài liệu phân tích, để người dựng biết đoạn đó cần nhịp gì. Không đọc phần này lên.
 
