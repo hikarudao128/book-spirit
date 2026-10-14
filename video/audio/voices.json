@@ -1,5 +1,5 @@
 {
-  "_doc": "Voice casting. model = Piper voice basename (looked up in $PIPER_VOICES_DIR). pitch = asetrate-style shift factor (>1 = higher/younger; formants move too, which is what makes kids sound small). length_scale = Piper speed (<1 faster). layers = list of voice keys mixed with offsets (ms) for group lines. pronounce = word replacements applied only to the text sent to TTS.",
+  "_doc": "Voice casting. model = Piper voice basename (looked up in $PIPER_VOICES_DIR). pitch = asetrate-style shift factor (>1 = higher/younger; formants move too, which is what makes kids sound small). length_scale = Piper speed (<1 faster). layers = list of voice keys mixed with offsets (ms) for group lines. pronounce = word replacements applied only to the text sent to TTS. The 'edge' section is the casting for audio/build_audio_edge.py (default): voice = Edge neural voice ShortName, rate = % speed change, pitch = Hz shift; per-line overrides in edge.lines; a line's length_scale scales its rate.",
   "sample_rate": 22050,
   "voices": {
     "NARRATOR": {
@@ -91,5 +91,141 @@
     "Ti": "Tee"
   },
   "target_rms_dbfs": -19.0,
-  "peak_dbfs": -1.0
+  "peak_dbfs": -1.0,
+  "edge": {
+    "voices": {
+      "NARRATOR": {
+        "voice": "en-US-AndrewNeural",
+        "rate": 4,
+        "pitch": 0
+      },
+      "MUI": {
+        "voice": "en-US-AnaNeural",
+        "rate": -2,
+        "pitch": -22,
+        "max_pause": 0.4,
+        "keep_pause": 0.3
+      },
+      "HAI": {
+        "voice": "en-GB-MaisieNeural",
+        "rate": 20,
+        "pitch": -18,
+        "max_pause": 0.4,
+        "keep_pause": 0.3
+      },
+      "TUN": {
+        "voice": "en-GB-MaisieNeural",
+        "rate": 4,
+        "pitch": 4,
+        "max_pause": 0.4,
+        "keep_pause": 0.3
+      },
+      "TI": {
+        "voice": "en-US-AnaNeural",
+        "rate": 6,
+        "pitch": 0,
+        "max_pause": 0.4,
+        "keep_pause": 0.3
+      },
+      "KID5": {
+        "voice": "en-US-AnaNeural",
+        "rate": 4,
+        "pitch": 10,
+        "max_pause": 0.4,
+        "keep_pause": 0.3
+      },
+      "OLD MUI": {
+        "voice": "en-US-ChristopherNeural",
+        "rate": -4,
+        "pitch": 0,
+        "max_pause": 0.45,
+        "keep_pause": 0.34
+      },
+      "DAD": {
+        "voice": "en-US-RogerNeural",
+        "rate": 0,
+        "pitch": -4,
+        "max_pause": 0.45,
+        "keep_pause": 0.34
+      },
+      "MOM": {
+        "voice": "en-US-MichelleNeural",
+        "rate": 4,
+        "pitch": 0,
+        "max_pause": 0.45,
+        "keep_pause": 0.34
+      },
+      "TEACHER": {
+        "voice": "en-GB-SoniaNeural",
+        "rate": -4,
+        "pitch": 0,
+        "max_pause": 0.45,
+        "keep_pause": 0.34
+      },
+      "HIS KID": {
+        "voice": "en-US-SteffanNeural",
+        "rate": 6,
+        "pitch": 12,
+        "max_pause": 0.45,
+        "keep_pause": 0.34
+      },
+      "THE WHOLE CLASS": {
+        "layers": [
+          [
+            "MUI",
+            0
+          ],
+          [
+            "TI",
+            35
+          ],
+          [
+            "HAI",
+            70
+          ],
+          [
+            "TUN",
+            20
+          ],
+          [
+            "KID5",
+            55
+          ]
+        ]
+      }
+    },
+    "lines": {},
+    "pronounce": {
+      "Mui": "Mooey",
+      "Hai": "Hi",
+      "Tun": "Toon",
+      "Ti": "Tee"
+    },
+    "target_rms_dbfs": -19.0,
+    "peak_dbfs": -1.0,
+    "sample_order": [
+      "NARRATOR",
+      "MUI",
+      "HAI",
+      "TUN",
+      "TI",
+      "OLD MUI",
+      "MOM",
+      "DAD",
+      "TEACHER",
+      "HIS KID",
+      "THE WHOLE CLASS"
+    ],
+    "audition": [
+      {
+        "label": "NARRATOR alt: en-US-BrianNeural",
+        "voice": "en-US-BrianNeural",
+        "rate": 4,
+        "text": "Meet Mooey. He is eight years old, and he has just figured out that life is boring."
+      }
+    ],
+    "max_pause": 0.5,
+    "keep_pause": 0.42,
+    "_doc": "max_pause/keep_pause: silences between words longer than max_pause are shortened to keep_pause (s); per-voice values override these defaults."
+  }
 }

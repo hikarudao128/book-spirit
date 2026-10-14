@@ -20,6 +20,7 @@ class Line:
     duration: float
     role: str = None
     envelope: list = field(default_factory=list, repr=False)
+    word_marks: list = field(default_factory=list, repr=False)   # [[word, start, end]] relative to line start
 
     def progress(self, t):
         """0..1 progress through this line (clamped)."""
@@ -40,8 +41,9 @@ class SceneContext:
     ctx.current(t)                      -> Line being spoken at t, or None
     ctx.speaking(speaker, t)            -> bool (speaker as in script: "MUI", "OLD MUI", ...)
     ctx.mouth(speaker, t)               -> 0..1 mouth openness from the line's RMS envelope
-    ctx.words(line_id)                  -> [(word, start, end)] estimated word timings
-    ctx.word_time(line_id, word_index)  -> start time of the n-th word (estimate)
+    ctx.words(line_id)                  -> [(word, start, end)] word timings (real TTS marks when the
+                                           manifest has them, i.e. Edge TTS; otherwise an estimate)
+    ctx.word_time(line_id, word_index)  -> start time of the n-th word
     ctx.find_word(line_id, "Kites")     -> start time of first word containing that text
     """
 
@@ -55,7 +57,8 @@ class SceneContext:
         self.preview = preview
         self.ss = 1 if preview else 2          # supersampling used by ctx.canvas()
         self.lines = [Line(l["id"], l["index"], l["speaker"], l["text"], l["start"], l["end"], l["duration"],
-                           l.get("role"), manifest.get(l["id"], {}).get("envelope", [])) for l in sc["lines"]]
+                           l.get("role"), manifest.get(l["id"], {}).get("envelope", []),
+                           manifest.get(l["id"], {}).get("words", [])) for l in sc["lines"]]
         self._by_id = {l.id: l for l in self.lines}
 
     def canvas(self, bg=(255, 255, 255)):
@@ -100,12 +103,17 @@ class SceneContext:
                 return 0.0
         return 0.0
 
-    # -------------------------------------------------- word timing (estimates)
+    # -------------------------------------------------- word timing
     def words(self, line_id):
-        """Estimate word start/end by distributing the line duration over characters,
-        with extra weight for punctuation pauses. Good enough for visual beats."""
+        """[(word, start, end)] in scene time for each word of line.text.split().
+
+        Uses the real TTS word marks from the manifest (Edge TTS build) when present; otherwise
+        estimates by distributing the line duration over characters, with extra weight for
+        punctuation pauses."""
         l = self.line(line_id)
         toks = l.text.split()
+        if l.word_marks and len(l.word_marks) == len(toks):
+            return [(w, l.start + s, l.start + e) for w, s, e in l.word_marks]
         weights = []
         for w in toks:
             wt = len(re.sub(r"[^\w']", "", w)) + 1.5
