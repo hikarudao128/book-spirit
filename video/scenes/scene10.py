@@ -264,7 +264,8 @@ def gag_attacked(cv, t, b):
                   scale=pop(t, b["attacked"] + 0.15, 0.25), rot=6)
 
 
-EPISODES = ("NEW NAMES", "GROWN-UPS", "COURT", "STRAY DOGS", "PLAY HOUSE")
+# only the episodes the script names (renaming, being adults / playing house, the trial, stray dogs)
+EPISODES = ("NEW NAMES", "GROWN-UPS", "COURT", "STRAY DOGS")
 
 
 def gag_episodes(cv, t, b):

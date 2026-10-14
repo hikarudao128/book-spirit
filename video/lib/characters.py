@@ -17,6 +17,7 @@ Names: MUI, OLD_MUI, HAI, TUN, TI, MOM, DAD, TEACHER, HIS_KID, VENDOR, KID (gene
 classmate; pass outfit/hair via `variant`), plus draw_dog(...) for DOG.
 """
 import math
+import zlib
 
 from . import palette as P
 from .core import INK, OW, bezier, clamp, ellipse_pts, lerp
@@ -150,7 +151,7 @@ def draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=0.0, f
     s = char_spec(name, outfit, **(variant or {}), **(colors or {}))
     expr = expression or s["expr"]
     if blink is None:
-        blink = auto_blink(t, seed=hash(name) % 97)
+        blink = auto_blink(t, seed=zlib.crc32(name.encode()) % 97)
     R = s["head_r"]
     leg, th, tw = s["leg"], s["torso_h"], s["torso_w"]
     sitting, arm_pose = _pose_parts(pose)

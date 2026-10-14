@@ -14,6 +14,8 @@ python3 video/render.py --scene 1 --still 4.6,14,20.5   # PNGs for visual QA -> 
 python3 video/render.py --scene 1 --preview             # fast 640x360@12fps check -> scene01_preview.mp4
 python3 video/render.py --scene all     # every scene + out/full.mp4
 python3 video/gallery.py                # reference sheets of all characters/sets/props -> build/stills/gallery_*.png
+python3 video/postprod.py all            # concat scenes, loudnorm -16 LUFS, en/vi subtitles, QA sheets -> out/ticket-to-childhood.mp4
+python3 video/thumbnail.py               # -> out/thumbnail.png
 ```
 
 | File | What it is |

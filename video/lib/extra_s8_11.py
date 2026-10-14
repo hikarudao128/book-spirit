@@ -12,7 +12,7 @@ from .core import INK, bezier, clamp, ellipse_pts, lerp, lerp_color
 
 
 def blink(t, seed=0, period=3.7):
-    """Deterministic blink (lib's auto_blink seeds with hash(name), which changes between runs)."""
+    """Deterministic blink with a phase seed (independent of lib's auto_blink)."""
     ph = (t + seed * 0.37) % period
     return math.sin(ph / 0.12 * math.pi) if ph < 0.12 else 0.0
 

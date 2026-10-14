@@ -123,7 +123,7 @@ def build_scene_audio(scene, length_s):
 
 def mux(video, audio, out):
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video, "-i", audio, "-map", "0:v", "-map", "1:a",
-                    "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", out], check=True)
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", out], check=True)
     return out
 
 
