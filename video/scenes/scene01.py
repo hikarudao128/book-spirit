@@ -6,7 +6,7 @@ Beats (times come from ctx, never hard-coded to audio):
   "No deadlines, no rent, no emails." -> three icons pop and get slashed
   after l03: record scratch, music cuts, snap-zoom onto Mui on the step
   "Meet Mui." freeze-frame + name tag; Mui says "Life is boring."
-  "Thank you, Mui." -> Mui slowly looks at camera; a kite crashes next to him. He does not care.
+  right after "Life is boring." a kite crashes next to him. He does not react (deadpan to camera).
 """
 import math
 
@@ -45,7 +45,7 @@ def _stoop(cv):
 
 def beats(ctx):
     """Every timing of the scene in one place, derived from the timeline."""
-    l1, l2, l3, l4, l5, l6 = (ctx.line(i) for i in range(6))
+    l1, l2, l3, l4, l5 = (ctx.line(i) for i in range(5))
     b = dict(
         sunshine=ctx.find_word(l1.id, "Sunshine"),
         kites=ctx.find_word(l1.id, "Kites"),
@@ -56,9 +56,9 @@ def beats(ctx):
         cut=l3.end + 0.25,                     # music stops, zoom starts
         meet=ctx.find_word(l4.id, "Mui"),
         tag_out=l5.start - 0.3,
-        mui=l5, thank=l6,
-        look=l6.start + 0.35,
-        kite_fall=l6.end + 0.2,
+        mui=l5,
+        look=ctx.find_word(l5.id, "boring"),   # turns to camera on "...boring."
+        kite_fall=l5.end + 0.1,
     )
     b["zoom_end"] = b["cut"] + 0.55
     b["kite_land"] = b["kite_fall"] + 1.0
