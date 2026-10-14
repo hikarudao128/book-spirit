@@ -107,7 +107,7 @@ def shot_dog(t, ctx, b, cv):
     # a giant adult leans in from the right
     a = ease_out(progress(t, b["adults"] - 0.1, 0.35))
     if a > 0:
-        draw_character(cv, "DAD", lerp(1500, 1060, a), 1180, 2.5, pose="point", flip=True, outfit="work",
+        draw_character(cv, "DAD", lerp(1500, 1080, a), 940, 2.8, pose="point", flip=True, outfit="work",
                        expression="neutral", t=t)
     stamp(cv, 470, 290, "OFFICIAL", pop(t, b["adults"] + 0.35, 0.2), rot=-10, size=40, fill=P.WHITE)
 

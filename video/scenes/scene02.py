@@ -20,7 +20,7 @@ import random
 
 from lib import palette as P
 from lib.backgrounds import draw_classroom, draw_desks, draw_dinner_table, draw_sun
-from lib.characters import draw_character
+from lib.characters import char_spec, draw_character
 from lib.core import INK, clamp, ease_in, ease_in_out, ease_out, ease_out_back, lerp, lerp_color, pop, progress
 from lib.extra_s2_4 import (corkboard, draw_alarm_clock, draw_backpack, draw_backpack_straps, draw_bed,
                             draw_desk_lamp, draw_foam, draw_notebook_stack, draw_school_gate, draw_sink_front,
@@ -213,7 +213,7 @@ def tab_homework(cv, u, ctx, more=False):
         # Mom's giant arm reaches in from off-frame and points at the pile
         reach = ease_out_back(clamp((u - 0.1) / 0.25), 1.3)
         hx, hy = lerp(1420, 985, reach), lerp(120, 250, reach)
-        cv.rect(1200, -100, 1500, 170, fill=(196, 70, 79), ow=4)          # a sliver of her red shirt
+        cv.rect(1200, -100, 1500, 170, fill=char_spec("MOM")["shirt"], ow=4)          # a sliver of her shirt
         cv.line([(1230, 120), (hx, hy)], INK, 17)
         cv.circle(hx, hy, 27, fill=(251, 227, 214), ow=4)
 
@@ -363,7 +363,7 @@ def render_class(t, ctx, b, cv):
     if rep.start - 0.1 <= t < cls.start - 0.05:
         s = pop(t, rep.start - 0.1, 0.3)
         hx, hy = ta["head"]
-        speech_bubble(cv, hx + 300, hy - 140, "Repeat after me.", tail=(-180, 80), size=30, scale=s)
+        speech_bubble(cv, hx + 60, hy - 250, "Repeat after me.", tail=(-20, 90), size=30, scale=s)
     # chant tiles: every kid emits the same word, they land in perfect rows
     if cls.start - 0.1 <= t < b["drop"] + 1.2:
         fall = progress(t, b["drop"], 0.6)

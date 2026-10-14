@@ -274,23 +274,23 @@ def phase2(cv, t, b, ctx):
     with cv.camera(cx, cy, z):
         draw_kitchen(cv, t, night=True)
         # the kids at the table
-        draw_character(cv, "HIS_KID", 350, 652, 1.0, pose="sit", expression="bored", t=t, look=(0, 0.9),
+        draw_character(cv, "HIS_KID", 350, 672, 1.1, pose="sit", expression="bored", t=t, look=(0, 0.9),
                        mouth_open=ctx.mouth("HIS KID", t), blink=blink(t, 4))
-        draw_character(cv, "KID", 560, 618, 1.0, pose="sit", expression="bored", t=t + 1, look=(0, 0.9),
+        draw_character(cv, "KID", 560, 652, 1.3, pose="sit", expression="bored", t=t + 1, look=(0, 0.9),
                        variant=SIS, blink=blink(t, 6))
         # phone glow on faces
         draw_dinner_table(cv, 470, 600, 500, dishes=False)
         _noodle_cup(cv, 250, 600, t, 0)
         _noodle_cup(cv, 660, 600, t, 1)
-        _phone_hands(cv, 362, 586, t, P.SKIN, 0)
-        _phone_hands(cv, 556, 590, t, P.SKIN, 2)
+        _phone_hands(cv, 362, 592, t, P.SKIN, 0)          # held low at the table edge, chins above
+        _phone_hands(cv, 566, 594, t, P.SKIN, 2)
         # hearts float off the son's phone while he texts his girlfriend
         hp = progress(t, b["text"] + 0.3, 2.2)
         if 0 < hp < 1:
             for i in range(3):
                 q = (hp * 1.6 - i * 0.25)
                 if 0 < q < 1:
-                    _heart(cv, 362 + math.sin(q * 6 + i) * 18 + i * 10, 556 - q * 120, 9 * (1 - q * 0.4))
+                    _heart(cv, 380 + math.sin(q * 6 + i) * 18 + i * 10, 560 - q * 120, 9 * (1 - q * 0.4))
         # Old Mui
         expr, pose, look = "neutral", "stand", (-0.8, 0.45)
         if t >= b["age"] - 0.1:
@@ -376,9 +376,9 @@ def _boring_stamp(cv, t, b, chest):
 
 
 # ================================================================== phase 3: book
-CROWD = [("KID", dict(shirt=(250, 190, 110)), 0.85), ("TI", None, 0.85), ("DAD", None, 0.72), ("MUI", None, 0.85),
-         ("HAI", None, 0.85), ("OLD_MUI", None, 0.85), ("TUN", None, 0.85), ("HIS_KID", None, 0.85),
-         ("KID", dict(shirt=(160, 120, 220)), 0.85)]
+CROWD = [("DAD", None, 0.85), ("KID", dict(shirt=(250, 190, 110)), 1.0), ("TI", None, 1.0), ("MUI", None, 1.0),
+         ("HAI", None, 1.0), ("TUN", None, 1.0), ("KID", dict(shirt=(160, 120, 220)), 1.0), ("HIS_KID", None, 1.0),
+         ("OLD_MUI", None, 1.0)]
 
 
 def _rays(cv, t, cx, cy, c1, c2):
@@ -407,7 +407,7 @@ def phase3(cv, t, b):
         ps = pop(t, b["which"] + i * 0.08, 0.35)
         if ps <= 0.01:
             continue
-        x = 60 + i * (1160 / (n - 1))
+        x = 85 + i * (1110 / (n - 1))
         y = 742 + (1 - ps) * 200
         expr = "bored" if nm in ("MUI", "OLD_MUI", "HIS_KID") else "happy"
         draw_character(cv, nm, x, y, sc, pose="arms_up" if expr == "happy" else "stand", expression=expr, t=t + i,

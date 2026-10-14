@@ -247,7 +247,8 @@ def _render_dark(t, ctx, b, cv):
     push = ease_in_out(progress(t, b["dark"], b["black"] - b["dark"]))
     cam = (640, lerp(372, 430, push), lerp(1.0, 1.14, push))
     sil = {"skin": ADULT_TONE, "shirt": ADULT_TONE, "pants": ADULT_TONE, "hair_color": ADULT_TONE,
-           "shoes": ADULT_TONE, "cheeks": False}
+           "shoes": ADULT_TONE, "cheeks": False,
+           "polo": False}          # no white collar trim; the work lanyards stay (they're "at work")
     hands = []
     with cv.camera(*cam):
         # dim courtyard wall, a little lighter low down so the dark figures read against it

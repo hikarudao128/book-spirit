@@ -241,7 +241,7 @@ def gag_attacked(cv, t, b):
     with cv.at(0, y):
         # hold_both: left hand on his chest, right hand out holding the book; after the hit the book drops
         # and the left hand stays clutching the chest where the arrow lands
-        a = draw_character(cv, "DAD", 930, 880, 1.0, pose="hold_both", expression="shocked" if hit else "neutral",
+        a = draw_character(cv, "DAD", 930, 800, 1.15, pose="hold_both", expression="shocked" if hit else "neutral",
                            t=t, look=(0.6, 0.8) if not hit else (0.5, -0.2), blink=blink(t, 5),
                            lean=-6 if hit else 0)
         bx, by = a["hand_r"]
@@ -392,10 +392,10 @@ def draw_who(cv, t, b):
         walking = wp < 1
         # Ti reaches out (point pose) and her hand lands exactly in Dad's hanging left hand; Dad stands low
         # (feet below the frame) so the hand heights meet with both of them on roughly the same floor
-        dad_x, dad_y = 1030 + dx, 760
+        dad_x, dad_y = 1040 + dx, 732
         ti_s = 1.55
         hop = -abs(math.sin(t * 9)) * 7 if walking else 0.0
-        dad = draw_character(cv, "DAD", dad_x, dad_y, 1.0, pose="walk" if walking else "stand", t=t + 0.2,
+        dad = draw_character(cv, "DAD", dad_x, dad_y, 1.15, pose="walk" if walking else "stand", t=t + 0.2,
                              expression="happy", look=(-0.6, 0.6), blink=blink(t, 7))
         h2 = dad["hand_l"]
         ti_x = h2[0] - 82 * ti_s / 1.5

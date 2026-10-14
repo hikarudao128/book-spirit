@@ -429,7 +429,7 @@ def phase_b(cv, t, b, ctx):
         if dad_p > 0:
             dx = lerp(1700, 1040, dad_p)
             walking = dad_p < 1
-            draw_character(cv, "DAD", dx, 700, 1.12, pose="walk" if walking else "hands_hip", t=t,
+            draw_character(cv, "DAD", dx, 700, 1.4, pose="walk" if walking else "hands_hip", t=t,
                            expression="neutral", mouth_open=ctx.mouth("DAD", t), look=(-0.7, 0.6),
                            blink=blink(t, 11) if t < b["no"] else 0)
     # pleading sparkles on the speaking kids (screen space)
