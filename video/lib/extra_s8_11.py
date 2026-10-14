@@ -19,14 +19,18 @@ def blink(t, seed=0, period=3.7):
 
 # ------------------------------------------------------------------ grown-up kids
 # The four friends forty years on. Each keeps a signature feature from the kid design.
+# All four share Old Mui's proportions (engine `muilon`: legs 1, torso 1, width 1, height by k only), so the
+# grown-ups read as one cast; Hai keeps longer (stork) legs.
+_GROWN_GEO = dict(legs=1.0, torso=1.0, width=1.0)
 GROWN = {
     "MUI": ("OLD_MUI", dict(shirt=(200, 206, 214), pants=(60, 60, 70), tie=True)),
-    "HAI": ("DAD", dict(hair="short", glasses=False, bandaid=True, torso_w=84, leg=200, torso_h=150,
-                        shirt=(150, 190, 140), pants=(120, 96, 70), tie=True, head_r=50, hair_color=(70, 64, 66))),
-    "TUN": ("MOM", dict(hair="topknot", eye_scale=1.2, hair_color=(64, 40, 30), shirt=(240, 200, 90),
-                        pants=(70, 66, 74), lips=True)),
-    "TI": ("MOM", dict(hair="ponytail_bow", missing_teeth=True, shirt=(236, 140, 160), pants=(60, 60, 80),
-                       lips=True, glasses=True)),
+    "HAI": ("OLD_MUI", dict(_GROWN_GEO, k=2.0, legs=1.45, hair="short", hair_color=(52, 48, 50), bandaid=True,
+                            bags=False, grey_temples=False, belly=False, expr="smug", shirt=(150, 190, 140),
+                            pants=(120, 96, 70), tie=True, tie_color=(120, 60, 40))),
+    "TUN": ("MOM", dict(_GROWN_GEO, k=1.9, hair="topknot", eye_scale=1.2, hair_color=(43, 43, 43),
+                        shirt=(185, 167, 230), pants=(70, 66, 74), lips=True)),
+    "TI": ("MOM", dict(_GROWN_GEO, k=1.95, hair="ponytail_bow", missing_teeth=True, hair_color=(59, 42, 32),
+                       shirt=(242, 141, 178), pants=(60, 60, 80), lips=True, glasses=True)),
 }
 
 
@@ -227,3 +231,21 @@ def arrow_head(cv, x, y, ang, size=22, color=INK):
            (x + math.cos(a + 2.5) * size * 0.8, y + math.sin(a + 2.5) * size * 0.8),
            (x + math.cos(a - 2.5) * size * 0.8, y + math.sin(a - 2.5) * size * 0.8)]
     cv.poly(pts, fill=color, ow=3)
+
+
+# ------------------------------------------------------------------ seated figure with a visible lap
+def draw_seated(cv, name, x, y, scale=1.0, flip=False, variant=None, **kw):
+    """draw_character(..., pose="sit*") plus thighs drawn over the shirt hem, so a figure on a low step
+    reads as sitting (side-view lap) rather than standing behind the step."""
+    from .characters import F, char_spec
+    kw.setdefault("pose", "sit")
+    a = draw_character(cv, name, x, y, scale, flip=flip, variant=variant, **kw)
+    s = char_spec(name, kw.get("outfit"), **(variant or {}))
+    K = s["k"] * F
+    lf = s["legs"]
+    with cv.at(x, y, scale * K, flip=flip):
+        hip = -18
+        for side in (-1, 1):                     # same joints as characters._draw_legs (sitting)
+            kx = 40 + 9 * side + 10 * (lf - 1)
+            cv.line([(side * 8 - 6, hip - 2), (kx + 12, hip + 4), (kx - 2, hip + 0.86 * 102 * lf)], INK, 7.5)
+    return a

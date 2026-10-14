@@ -250,19 +250,24 @@ def draw_school_gate(cv, x, ground):
     cv.line([(x - 266, ground - 110), (x + 266, ground - 110)], (110, 110, 120), 6)
 
 
-def draw_backpack(cv, chest, scale=1.0, color=(230, 90, 60)):
-    """Backpack peeking out on both sides of a front-facing kid (draw BEFORE the kid)."""
-    x, y = chest
+def draw_backpack(cv, x, y, scale=1.0, facing=1, color=(230, 90, 60)):
+    """Side-view school backpack on the BACK of a walking stick kid whose feet are at (x, y) and who
+    faces `facing` (+1 right, -1 left). Sized for Mui-like kids (shoulder ~97 px above the feet at
+    scale 1). Draw BEFORE the kid."""
     s = scale
-    cv.rect(x - 40 * s, y - 26 * s, x + 40 * s, y + 46 * s, fill=color, radius=14 * s)
+    bx = x - facing * 22 * s
+    with cv.at(bx, y - 74 * s, s):
+        cv.rect(-17, -26, 17, 26, fill=color, radius=9, ow=3)
+        cv.rect(-13 if facing < 0 else -4, -6, 4 if facing < 0 else 13, 16,
+                fill=lerp_color(color, INK, 0.15), radius=5, ow=2.4)
+        cv.line([(-8, -30), (8, -30)], lerp_color(color, INK, 0.3), 3)
 
 
-def draw_backpack_straps(cv, chest, scale=1.0, color=(230, 90, 60)):
-    x, y = chest
+def draw_backpack_straps(cv, x, y, scale=1.0, facing=1, color=(230, 90, 60)):
+    """The one strap visible over the near shoulder (draw AFTER the kid)."""
     s = scale
-    for side in (-1, 1):
-        cv.line([(x + side * 16 * s, y - 22 * s), (x + side * 20 * s, y + 18 * s)], lerp_color(color, INK, 0.2),
-                6 * s)
+    cv.line([(x - facing * 6 * s, y - 97 * s), (x + facing * 3 * s, y - 72 * s), (x - facing * 8 * s, y - 56 * s)],
+            lerp_color(color, INK, 0.25), 3.6 * s)
 
 
 def draw_desk_lamp(cv, x, y, on=True, s=1.0):

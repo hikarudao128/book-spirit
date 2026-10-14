@@ -231,10 +231,10 @@ def _sticker(t, b, cv, anchors):
 # ------------------------------------------------------------------ house part
 def _house_cam(t, b):
     L = b["L"]
-    wide = (728, 446, 1.45)
-    on_ti = (TI_X + 62, 498, 2.0)
+    wide = (692, 434, 1.45)
+    on_ti = (TI_X + 70, 522, 2.2)
     on_tun = (TUN_X + 20, 470, 1.6)
-    on_mui = (MUI_X + 190, 470, 1.5)
+    on_mui = (MUI_X + 150, 462, 1.5)
     keys = [(b["house"], wide), (L[10].start + 0.1, wide), (L[10].start + 0.45, on_ti, 0.35),
             (L[11].start - 0.2, on_ti), (L[11].start + 0.2, on_tun, 0.4),
             (L[12].start - 0.1, on_tun), (L[12].start + 0.35, on_mui, 0.45),
@@ -251,7 +251,7 @@ def _render_house(t, ctx, b, cv):
         cv.rect(190, 130, 310, 270, fill=WALL, outline=None)
         draw_door(cv, DOOR_X, 560, open_amount=1.0)
         # HOUSE RULES sign on the wall
-        board(cv, 680, 300, 290, 158, "HOUSE RULES", ["1. NO HOMEWORK", "2. GET DIRTY"], style="paper",
+        board(cv, 690, 266, 290, 158, "HOUSE RULES", ["1. NO HOMEWORK", "2. GET DIRTY"], style="paper",
               title_size=26, line_size=21, scale=pop(t, b["rules"] - 0.1, 0.35), rot=2,
               reveal=progress(t, b["rules"] + 0.15, 0.6))
 

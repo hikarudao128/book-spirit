@@ -29,7 +29,7 @@ from lib.backgrounds import (SOFT, draw_alley, draw_book_cover, draw_cloud, draw
                              draw_plastic_stool, draw_sun)
 from lib.characters import draw_character
 from lib.core import INK, Canvas, clamp, ease_in_out, ease_out, ease_out_back, lerp, lerp_color, pop, progress
-from lib.extra_s8_11 import (blink, draw_motorbike, draw_rails, draw_sign, draw_steam_puffs, draw_tower,
+from lib.extra_s8_11 import (blink, draw_motorbike, draw_seated, draw_rails, draw_sign, draw_steam_puffs, draw_tower,
                              draw_train_car, sign_layout)
 from lib.text import label, name_tag, text_width
 
@@ -135,13 +135,13 @@ def _draw_mui_stage(cv, k, t, look, expr):
     y = GROUND - 26
     kw = dict(pose="sit_chin_on_hand", t=t, look=look, blink=blink(t, 2))
     if k == 0:
-        draw_character(cv, "MUI", STEP_X, y, 1.0, expression=expr or "bored", **kw)
+        draw_seated(cv, "MUI", STEP_X, y, 1.0, expression=expr or "bored", **kw)
     elif k == 1:
-        draw_character(cv, "MUI", STEP_X, y, 1.0, expression=expr or "bored", variant=TEEN, **kw)
+        draw_seated(cv, "MUI", STEP_X, y, 1.0, expression=expr or "bored", variant=TEEN, **kw)
     elif k == 2:
-        draw_character(cv, "OLD_MUI", STEP_X, y, 0.85, expression=expr or "bored", variant=YOUNG, **kw)
+        draw_seated(cv, "OLD_MUI", STEP_X, y, 0.95, expression=expr or "bored", variant=YOUNG, **kw)
     else:
-        draw_character(cv, "OLD_MUI", STEP_X, y, 0.85, expression=expr or "bored", **kw)
+        draw_seated(cv, "OLD_MUI", STEP_X, y, 0.95, expression=expr or "bored", **kw)
 
 
 def _camera1(t, b):
@@ -264,8 +264,8 @@ def _heart(cv, x, y, r, col=P.ACCENT):
 def _camera2(t, b):
     p = ease_in_out(progress(t, b["actually"] - 0.2, 0.8))
     q = ease_in_out(progress(t, b["little"] - 0.1, 0.6))
-    z = lerp(1.0, 1.12, p) * lerp(1, 1 / 1.12, q)
-    return lerp(640, 760, p * (1 - q)), lerp(360, 330, p * (1 - q)), z
+    z = lerp(1.3, 1.42, p) * lerp(1, 1.3 / 1.42, q)
+    return lerp(650, 740, p * (1 - q)), lerp(470, 455, p * (1 - q)), z
 
 
 def phase2(cv, t, b, ctx):
@@ -378,7 +378,7 @@ def _boring_stamp(cv, t, b, chest):
 # ================================================================== phase 3: book
 CROWD = [("VENDOR", None, 0.5), ("KID", dict(shirt=(250, 190, 110)), 0.85), ("MOM", None, 0.5), ("TI", None, 0.85),
          ("DAD", None, 0.5), ("MUI", None, 0.85), ("TEACHER", None, 0.5), ("HAI", None, 0.85),
-         ("OLD_MUI", None, 0.5), ("TUN", None, 0.85), ("HIS_KID", None, 0.75),
+         ("OLD_MUI", None, 0.64), ("TUN", None, 0.85), ("HIS_KID", None, 0.75),
          ("KID", dict(hair="bob", bottom="dress", shirt=(160, 120, 220)), 0.85)]
 
 
@@ -515,7 +515,8 @@ def _head_in_window(cv, wx, wy, ww, wh, t):
     crop (the window frame cannot mask an adult's long legs below the car)."""
     k = 4
     sub = Canvas(bg=(255, 236, 190), ss=1, w=int(ww * k), h=int(wh * k))
-    with sub.at(ww * k / 2, wh * k * 0.62 + 382 * 0.55 * k, 0.55 * k):
+    hs = 0.5                                   # head (r ~ 62 px at scale 1) fits the 60 px cab window
+    with sub.at(ww * k / 2, wh * k * 0.6 + 231 * hs * k, hs * k):
         draw_character(sub, "OLD_MUI", 0, 0, 1.0, expression="proud", t=t, look=(0.6, 0), blink=blink(t, 8))
     cv.paste(sub.finish(), wx, wy, scale=1.0 / k)
 

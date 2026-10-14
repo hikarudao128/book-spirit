@@ -20,24 +20,22 @@ import math
 from lib import palette as P
 from lib.backgrounds import SOFT, draw_courtroom, draw_plastic_stool
 from lib.characters import draw_character
-from lib.core import INK, clamp, ease_in_out, ease_out, lerp, pop, progress, wiggle
-from lib.extra_s5_7 import cam_keys, grade, spotlight, stamp, title_backdrop, to_world
+from lib.core import INK, clamp, ease_in_out, ease_out, lerp, lerp_color, pop, progress, wiggle
+from lib.extra_s5_7 import cam_keys, draw_stick, grade, spotlight, stamp, title_backdrop, to_world
 from lib.fx import shake, vignette
 from lib.text import board, idea_card, label
 
 BENCH_X = 640
-HAI_Y = 468                      # Hai stands behind the plank (plank top at y=360)
+HAI_Y = 488                      # Hai stands behind the plank (plank top at y=360); hands at plank height
 GALLERY = {"TUN": 100, "TI": 240, "MUI": 380}
 STOOL_Y = 680
 DEF_X = (1520, 1690)
 
-ADULTS = [  # (name, x, colours, props)
-    ("DAD", 170, None, ()),
-    ("MOM", 490, None, ("stick",)),
-    ("DAD", 800, {"shirt": (150, 160, 140), "pants": (60, 60, 70)}, ("ruler@L",)),
-    ("MOM", 1110, {"shirt": (110, 120, 160)}, ()),
-]
-KIDS_SMALL = [("MUI", 410), ("HAI", 560), ("TUN", 720), ("TI", 870)]
+# giant adults for the "parents found out" shot: (name, x, scale, shirt) - shoulders sit at the top edge
+# of the frame so only torsos, hanging arms and the long legs show; they form a dark wall behind the kids
+ADULT_TONE = (34, 30, 38)
+ADULTS = [("DAD", 150, 2.70), ("MOM", 478, 2.55), ("DAD", 800, 2.62), ("MOM", 1128, 2.72)]
+KIDS_SMALL = [("HAI", 470, False), ("MUI", 585, False), ("TUN", 700, True), ("TI", 812, True)]
 
 
 def beats(ctx):
@@ -116,11 +114,11 @@ def _bang_state(t, bangs):
 
 def _court_cam(t, b):
     L = b["L"]
-    wide = (600, 388, 1.15)
+    wide = (540, 400, 1.12)
     hai = (640, 285, 2.0)
-    charge = (800, 300, 1.55)
+    charge = (840, 300, 1.55)
     stools = (1605, 520, 1.55)
-    tun = (GALLERY["TUN"] + 70, 500, 1.8)
+    tun = (GALLERY["TUN"] + 68, 566, 2.25)
     keys = [(b["court"], wide), (b["order1"] - 0.25, wide), (b["order1"] - 0.05, hai, 0.2),
             (b["paper_in"] - 0.05, hai), (b["paper_in"] + 0.5, charge, 0.5),
             (b["paper_out"], charge), (L[6].start + 0.2, hai, 0.45),
@@ -170,7 +168,7 @@ def _render_court(t, ctx, b, cv):
 
         # Judge Hai behind the bench
         striking = impact > 0 and raised <= 0.3
-        hai_pose = "fist_up" if raised > 0.3 else ("point" if striking else "stand")
+        hai_pose = "fist_up" if raised > 0.3 else ("point" if striking else "hold")
         hai_expr = "angry" if (raised > 0.3 or striking) else "smug"
         look = (0, 0)
         if L[6].start - 0.1 <= t < b["tun_cut"]:
@@ -183,6 +181,7 @@ def _render_court(t, ctx, b, cv):
         if t >= b["dismissed"] + 0.3:
             hai_expr = "proud"
         a = draw_character(cv, "HAI", BENCH_X, HAI_Y, 1.25, pose=hai_pose, expression=hai_expr, props=("wig",),
+                           variant={"hair_color": (250, 250, 247)},   # white cap under the curls: all wig, no black hair
                            mouth_open=ctx.mouth("HAI", t), t=t, look=look)
         hx, hy = to_world(a["hand_r"], cam)
         # bench: plank on two blue stools, re-drawn over Hai, plus a paper JUDGE sign hiding his legs
@@ -194,7 +193,7 @@ def _render_court(t, ctx, b, cv):
         cv.rect(BENCH_X - 210, 360, BENCH_X + 210, 392, fill=P.WOOD, radius=4)
         # gavel: in the air for the swing, slammed on the plank, otherwise lying on the bench
         if raised > 0.3:
-            _gavel(cv, hx, hy, lerp(-70, -125, raised), 1.25)
+            _gavel(cv, hx, hy, lerp(-40, -95, raised), 1.25)
         elif striking:
             head = _gavel(cv, hx, hy, 28, 1.25)
             for k in range(5):
@@ -204,7 +203,9 @@ def _render_court(t, ctx, b, cv):
                 cv.line([(ox + math.cos(ang) * r0, oy + math.sin(ang) * r0),
                          (ox + math.cos(ang) * r1, oy + math.sin(ang) * r1)], INK, 3.5)
         else:
-            _gavel(cv, BENCH_X + 70, 346, -4, 1.25, hand=False)
+            # resting: handle in his hand, head lying on the plank
+            ang = math.degrees(math.atan2(352 - hy, 60))
+            _gavel(cv, hx, hy, ang, 1.25)
 
         # gallery: Tun, Ti and Mui on red stools
         for nm, x in GALLERY.items():
@@ -240,27 +241,48 @@ def _render_court(t, ctx, b, cv):
 
 
 def _render_dark(t, ctx, b, cv):
-    """Four small kids before four giant adults, seen from the kids' height. Implication only."""
+    """Four small kids before four giant adults, seen from the kids' height (worm's-eye). The adults are
+    near-black silhouettes cropped at the shoulders; one lets a cane hang from his hand, one a ruler.
+    Implication only: nobody moves toward anyone. Slow push on the scared faces, cut to black on "beating"."""
     push = ease_in_out(progress(t, b["dark"], b["black"] - b["dark"]))
-    cam = (640, lerp(380, 450, push), lerp(1.0, 1.16, push))
+    cam = (640, lerp(372, 430, push), lerp(1.0, 1.14, push))
+    sil = {"skin": ADULT_TONE, "shirt": ADULT_TONE, "pants": ADULT_TONE, "hair_color": ADULT_TONE,
+           "shoes": ADULT_TONE, "cheeks": False}
+    hands = []
     with cv.camera(*cam):
-        cv.rect(-300, -300, 1580, 600, fill=(150, 140, 130), outline=None)     # dim courtyard wall
-        cv.rect(-300, 600, 1580, 1100, fill=(120, 112, 100), outline=None)
-        cv.line([(-300, 600), (1580, 600)], INK, 3)
-        for nm, x, cols, props in ADULTS:
-            draw_character(cv, nm, x, 760, 2.35, pose="stand", props=props, colors=cols, t=0, blink=0)
-    # the adults sink into shadow; the kids stay a little lit
-    bg = grade(cv.finish(), sat=0.3, mul=(0.5, 0.47, 0.52))
+        # dim courtyard wall, a little lighter low down so the dark figures read against it
+        for k in range(12):
+            y0 = -300 + k * 80
+            cv.rect(-300, y0, 1580, y0 + 82, fill=lerp_color((70, 64, 70), (132, 120, 112), k / 11), outline=None)
+        cv.rect(-300, 610, 1580, 1100, fill=(96, 88, 84), outline=None)
+        cv.line([(-300, 610), (1580, 610)], INK, 3)
+        for i, (nm, x, sc) in enumerate(ADULTS):
+            breathe = math.sin(t * 1.6 + i * 1.3) * 3
+            feet = -14 + (318 if nm == "DAD" else 298) * sc + breathe     # shoulders just above the frame
+            a = draw_character(cv, nm, x, feet, sc, pose="stand", colors=sil, t=0, blink=1.0)
+            hands.append((to_world(a["hand_r"], cam), to_world(a["hand_l"], cam), sc))
+    bg = grade(cv.finish(), sat=0.35, mul=(0.8, 0.77, 0.84))
     cv2 = ctx.canvas((0, 0, 0))
     cv2.paste(bg, 0, 0)      # paste() upsamples the finished frame to the canvas resolution
     with cv2.camera(*cam):
-        for i, (nm, x) in enumerate(KIDS_SMALL):
+        # the cane hangs from the first adult's right hand, the ruler from the last one's left hand
+        (hx, hy), _, sc = hands[0]
+        sway = math.sin(t * 1.3) * 1.5
+        draw_stick(cv2, hx + 30 * sc / 2.6, hy + 330, length=350, rot=-6 + sway, color=(178, 136, 84), w=9)
+        cv2.circle(hx, hy, 11 * sc * 0.42 * 2.4, fill=ADULT_TONE, ow=3)
+        _, (lx, ly), sc = hands[3]
+        with cv2.at(lx, ly, 1, rot=4 + sway):
+            cv2.rect(-11, -6, 11, 250, fill=(226, 200, 120), radius=3, ow=3)
+            for k in range(1, 12):
+                cv2.line([(-11, k * 21), (-1 if k % 2 else 3, k * 21)], INK, 2, round_caps=False)
+        cv2.circle(lx, ly, 11 * sc * 0.42 * 2.4, fill=ADULT_TONE, ow=3)
+        for i, (nm, x, fl) in enumerate(KIDS_SMALL):
             jit = wiggle(t, 7, 1.4, seed=i)
-            draw_character(cv2, nm, x + jit, 712, 1.1, expression="scared", look=(0, -0.9),
-                           pose="hold_both" if i % 2 == 0 else "stand", t=t + i)
-    img = grade(cv2.finish(), sat=0.6, mul=(0.85, 0.83, 0.86))
-    img = spotlight(img, 640, 560, 420, 200, 0.45, soft=0.9)
-    return vignette(img, 0.75)
+            draw_character(cv2, nm, x + jit, 708, 1.22, expression="scared", look=(0, -0.95), flip=fl,
+                           pose="stand", t=t + i, blink=0)
+    img = grade(cv2.finish(), sat=0.55, mul=(0.86, 0.84, 0.88))
+    img = spotlight(img, 640, 590, 330, 190, 0.5, soft=0.9)
+    return vignette(img, 0.7)
 
 
 # ------------------------------------------------------------------ frame

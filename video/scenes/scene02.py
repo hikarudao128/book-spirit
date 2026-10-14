@@ -120,9 +120,12 @@ def tab_wake(cv, u, ctx, again=False):
     draw_sun(cv, 270, 140, 40, u, rays=False)
     draw_bed(cv, 560, 520, w=760)
     yawn = 0.25 + 0.75 * clamp(math.sin(clamp(u / 0.5) * math.pi))
-    draw_character(cv, "MUI", 420, 530, 2.5, pose="sit", expression="bored" if not again else "deadpan",
+    draw_character(cv, "MUI", 330, 492, 2.5, pose="sit", expression="bored" if not again else "deadpan",
                    mouth_open=yawn, t=u, blink=0.0, look=(0.3, 0.2))
-    draw_bed(cv, 560, 520, w=760, front_only=True)
+    # sitting up in bed: the blanket covers his legs
+    blank = (110, 160, 220)
+    cv.poly([(250, 486), (340, 470), (430, 478), (560, 498), (950, 504), (952, 614), (248, 614)], fill=blank, ow=3.4)
+    cv.line([(262, 500), (940, 514)], lerp_color(blank, P.WHITE, 0.4), 6)
     cv.rect(1000, 470, 1240, 680, fill=P.WOOD, ow=3.4)
     draw_alarm_clock(cv, 1120, 390, u, ringing=True, s=1.5)
 
@@ -130,7 +133,7 @@ def tab_wake(cv, u, ctx, again=False):
 def tab_brush(cv, u, ctx, again=False, look=(0.0, 0.25), mouth=0.0, expr="bored"):
     draw_tiles(cv, -200, -200, 1480, 900)
     draw_sink_mirror(cv, 640, 210)
-    a = draw_character(cv, "MUI", 640, 820, 2.8, pose="hold", expression=expr, t=u, look=look,
+    a = draw_character(cv, "MUI", 640, 905, 3.4, pose="hold", expression=expr, t=u, look=look,
                        mouth_open=mouth)
     hand = from_screen(cv, a["hand_r"])
     m = from_screen(cv, a["mouth"])
@@ -144,7 +147,7 @@ def tab_breakfast(cv, u, ctx):
     _floor(cv, 640, P.FLOOR_TILE)
     draw_window(cv, 900, 70, 1160, 300, sky=(190, 230, 245))
     chew = 0.15 + 0.6 * abs(math.sin(u * 9))
-    draw_character(cv, "MUI", 640, 660, 2.5, pose="sit_hold", props=("bowl",), outfit="uniform",
+    draw_character(cv, "MUI", 640, 664, 3.0, pose="sit_hold", props=("bowl",), outfit="uniform",
                    expression="bored", mouth_open=chew, t=u)
     draw_dinner_table(cv, 640, 640, w=980, dishes=True)
 
@@ -152,13 +155,12 @@ def tab_breakfast(cv, u, ctx):
 def tab_school(cv, u, ctx):
     cv.rect(-200, -200, 1480, 900, fill=(170, 220, 245), outline=None)
     _floor(cv, 600, P.GROUND)
-    draw_school_gate(cv, 640, 600)
-    x = lerp(560, 720, clamp(u / 0.8))
-    s = 2.3
-    chest = (x, 760 - (46 + 54 * 0.6) * s)
-    draw_backpack(cv, chest, s * 1.1)
-    draw_character(cv, "MUI", x, 760, s, pose="walk", outfit="uniform", expression="bored", t=u * 1.4)
-    draw_backpack_straps(cv, chest, s)
+    draw_school_gate(cv, 870, 600)
+    x = lerp(230, 420, clamp(u / 0.8))
+    s = 2.6
+    draw_backpack(cv, x, 790, s, facing=1)
+    draw_character(cv, "MUI", x, 790, s, pose="walk", outfit="uniform", expression="bored", t=u * 1.4)
+    draw_backpack_straps(cv, x, 790, s, facing=1)
 
 
 def tab_memorize(cv, u, ctx):
@@ -186,13 +188,12 @@ def tab_home(cv, u, ctx):
     cv.rect(50, 100, 430, 230, fill=(250, 200, 140), ow=3)
     cv.text(240, 165, "HOME", 64, P.ACCENT, "black")
     _floor(cv, 660, (226, 170, 120))
-    x = lerp(900, 720, clamp(u / 0.8))
-    s = 2.3
-    chest = (x, 770 - (46 + 54 * 0.6) * s)
-    draw_backpack(cv, chest, s * 1.1)
-    draw_character(cv, "MUI", x, 770, s, pose="walk", outfit="uniform", expression="deadpan", t=u * 1.2,
+    x = lerp(900, 700, clamp(u / 0.8))
+    s = 2.6
+    draw_backpack(cv, x, 800, s, facing=-1)
+    draw_character(cv, "MUI", x, 800, s, pose="walk", outfit="uniform", expression="deadpan", t=u * 1.2,
                    flip=True)
-    draw_backpack_straps(cv, chest, s)
+    draw_backpack_straps(cv, x, 800, s, facing=-1)
 
 
 def tab_homework(cv, u, ctx, more=False):
@@ -209,8 +210,12 @@ def tab_homework(cv, u, ctx, more=False):
         d = ease_out(clamp(u / 0.14))
         y = lerp(-500, 610, d)
         draw_notebook_stack(cv, 840, y, n=20, w=200, seed=2)
-        # giant mom, head out of frame, pointing at the pile
-        draw_character(cv, "MOM", 1230, 1240, 2.6, pose="point", flip=True, expression="neutral", t=u)
+        # Mom's giant arm reaches in from off-frame and points at the pile
+        reach = ease_out_back(clamp((u - 0.1) / 0.25), 1.3)
+        hx, hy = lerp(1420, 985, reach), lerp(120, 250, reach)
+        cv.rect(1200, -100, 1500, 170, fill=(196, 70, 79), ow=4)          # a sliver of her red shirt
+        cv.line([(1230, 120), (hx, hy)], INK, 17)
+        cv.circle(hx, hy, 27, fill=(251, 227, 214), ow=4)
 
 
 def tab_bed(cv, u, ctx):
@@ -218,9 +223,14 @@ def tab_bed(cv, u, ctx):
     _floor(cv, 640, (40, 40, 70))
     draw_window(cv, 900, 60, 1160, 300, night=True)
     draw_bed(cv, 640, 470, w=900, night=True, blanket=False)
-    with cv.at(1080, 440, 1, rot=-90):
-        draw_character(cv, "MUI", 0, 0, 2.3, pose="stand", expression="neutral", blink=1.0, t=0)
-    draw_bed(cv, 640, 470, w=900, night=True, front_only=True)
+    # lying on his back, head on the pillow, tucked in to the chest
+    with cv.at(665, 432, 1, rot=-90):
+        draw_character(cv, "MUI", 0, 0, 2.6, pose="stand", expression="neutral", blink=1.0, t=0)
+    # blanket pulled up to his chin (bulges over the body)
+    blank = (60, 80, 150)
+    top = [(392, 404), (520, 386), (700, 392), (900, 404), (1100, 412)]
+    cv.poly(top + [(1104, 524), (388, 524)], fill=blank, ow=3.4)
+    cv.line([(396, 420), (1098, 428)], lerp_color(blank, P.WHITE, 0.35), 6)
     for k in range(3):
         f = (u * 1.5 + k / 3) % 1
         cv.text(300 + f * 140 + k * 10, 260 - f * 170, "z", 50 + f * 40, P.WHITE, "black")
@@ -299,7 +309,7 @@ def render_montage(t, ctx, b, cv):
 def render_see(t, ctx, b, cv):
     u = t - b["see"]
     z = lerp(1.75, 1.85, ease_in_out(progress(t, b["see"], 1.0)))
-    with cv.camera(640, 450, z):
+    with cv.camera(640, 400, z):
         mouth = ctx.mouth("MUI", t)
         tab_brush(cv, t, ctx, look=(0, 0), mouth=mouth, expr="deadpan")
     return cv.finish()
@@ -350,10 +360,10 @@ def render_class(t, ctx, b, cv):
                             mouth_open=ctx.mouth("TEACHER", t), t=t,
                             look=(0.6, 0.1) if t < b["stare"] else (0, 0))
     # teacher's bubble (screen space)
-    if rep.start - 0.1 <= t < cls.start + 0.3:
+    if rep.start - 0.1 <= t < cls.start - 0.05:
         s = pop(t, rep.start - 0.1, 0.3)
         hx, hy = ta["head"]
-        speech_bubble(cv, hx + 250, hy - 30, "Repeat after me.", tail=(-170, 30), size=30, scale=s)
+        speech_bubble(cv, hx + 300, hy - 140, "Repeat after me.", tail=(-180, 80), size=30, scale=s)
     # chant tiles: every kid emits the same word, they land in perfect rows
     if cls.start - 0.1 <= t < b["drop"] + 1.2:
         fall = progress(t, b["drop"], 0.6)
@@ -406,11 +416,11 @@ def render_prison(t, ctx, b, cv):
         cv.text(1140, 196, "2:00 PM", 22, INK, "black")
         # Mui at his desk
         colors = JUMPSUIT if jail else None
-        look = (0.8, -0.3)
+        look = (-0.8, -0.3)          # gazing at the barred window
         lp = ease_in_out(progress(t, b["crazy"], 0.6))
         look = (lerp(look[0], 0, lp), lerp(look[1], 0, lp))
         expr = "bored" if not jail else ("sad" if hot_p < 0.5 else "deadpan")
-        a = draw_character(cv, "MUI", 900, 640, 2.6, pose="sit_chin_on_hand", outfit=None if jail else "uniform",
+        a = draw_character(cv, "MUI", 890, 668, 3.3, pose="sit_chin_on_hand", outfit=None if jail else "uniform",
                            colors=colors, expression=expr, t=t, look=look, mouth_open=0)
         if hot_p > 0:
             hx, hy = a["head"]

@@ -29,7 +29,7 @@ BG = (30, 34, 58)
 FLOOR = (44, 48, 80)
 FLOOR_Y = 600
 INTRO_X = 880
-GROUP = [("HAI", 280), ("MUI", 530), ("TUN", 780), ("TI", 1020)]
+GROUP = [("HAI", 360), ("MUI", 560), ("TUN", 750), ("TI", 930)]
 
 
 def beats(ctx):
@@ -124,8 +124,8 @@ def shot_alone(t, ctx, b, cv):
     sil = pop(t, b["crew"], 0.3)
     if sil > 0:
         for i, (nm, x) in enumerate((("HAI", 300), ("TUN", 980), ("TI", 1170))):
-            draw_character(cv, nm, x, FLOOR_Y + 10 + (1 - sil) * 30, 1.6, colors=dark_variant(nm),
-                           expression="smug" if nm == "HAI" else "neutral", t=t + i, look=(-0.6 if x > 640 else 0.6, 0))
+            draw_character(cv, nm, x, FLOOR_Y + 10 + (1 - sil) * 30, 1.75, colors=dark_variant(nm),
+                           expression="angry", blink=0.0, t=t + i, look=(-0.6 if x > 640 else 0.6, 0))
     draw_character(cv, "MUI", 640, FLOOR_Y + 40, 1.9, expression="bored", t=t,
                    look=(0, 0) if t < b["crew"] + 0.3 else (-0.7, 0), mouth_open=ctx.mouth("MUI", t))
 
@@ -152,7 +152,7 @@ def shot_hai(t, ctx, b, cv):
         look = (math.copysign(0.9, math.sin((t - b["sneaky"]) * 14)), 0)
     pose = "run" if arrive < 1 else ("shrug" if t >= b["sorry"] - 0.1 else "stand")
     draw_character(cv, "HAI", x, FLOOR_Y + 60, 2.25, pose=pose, expression="smug", t=t, look=look,
-                   lean=-14 if arrive < 1 else 0)
+                   lean=14 if arrive < 1 else 0, flip=arrive < 1)
 
 
 def shot_tun(t, ctx, b, cv):
@@ -185,7 +185,7 @@ def shot_ti(t, ctx, b, cv):
         pose = "walk" if arrive < 1 else ("hands_hip" if t >= b["confident"] else "stand")
         talking = b["look"].start <= t < b["look"].end
         expr = "smug" if (talking or t >= b["look"].end) else "happy"
-        a = draw_character(cv, "TI", x, FLOOR_Y + 60, 2.6, pose=pose, expression=expr, t=t,
+        a = draw_character(cv, "TI", x, FLOOR_Y + 60, 2.6, pose=pose, expression=expr, t=t, flip=arrive < 1,
                            mouth_open=ctx.mouth("TI", t), look=(0, 0) if zoom_p > 0.5 else (-0.3, 0))
         m = from_screen(cv, a["mouth"])
         for k, (dx, dy) in enumerate(((-150, -260), (140, -300), (170, -120), (-170, -80))):
@@ -233,18 +233,18 @@ def shot_group(t, ctx, b, cv):
             pose, expr, look = "arms_up", "proud", (0, 0)
         if t >= b["how"].start - 0.15:
             pose, expr = "stand", None
-            look = (0.9 if x < 540 else (-0.9 if x > 540 else 0), 0)
+            look = (0.9, 0) if x < 560 else ((-0.9, 0) if x > 560 else (-0.6, 0))
             if nm == "HAI":
                 pose, expr = "shrug", "neutral"
         if nm == "MUI" and t >= b["ideas"].start - 0.1:
             pose, expr, look = "point_up", "smug", (0, 0)
-        a = draw_character(cv, nm, x, FLOOR_Y + 80, 2.1, pose=pose, expression=expr, t=t + i * 0.6,
-                           mouth_open=ctx.mouth(nm, t), look=look)
+        # Tun and Ti stand right of Mui: they face left, into the group
+        a = draw_character(cv, nm, x, FLOOR_Y + 80, 2.3, pose=pose, expression=expr, t=t + i * 0.6,
+                           mouth_open=ctx.mouth(nm, t), look=look, flip=nm in ("TUN", "TI"))
         if nm == "MUI":
             mui = a
-    hx, hy = mui["hand_r"]
-    badge(cv, hx - 10, hy - 80, pop(t, b["three"], 0.35), "3", size=72)
     tx, ty = mui["top"]
+    badge(cv, tx + 120, ty - 20, pop(t, b["three"], 0.35), "3", size=72)
     lightbulb(cv, tx - 10, ty - 85, pop(t, b["three"] - 0.15, 0.35) * 1.1)
 
 

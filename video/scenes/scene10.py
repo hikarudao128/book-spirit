@@ -239,18 +239,22 @@ def gag_attacked(cv, t, b):
     hit = t >= b["attacked"] + 0.1
     y = lerp(900, 0, s)
     with cv.at(0, y):
+        # hold_both: left hand on his chest, right hand out holding the book; after the hit the book drops
+        # and the left hand stays clutching the chest where the arrow lands
         a = draw_character(cv, "DAD", 930, 880, 1.0, pose="hold_both", expression="shocked" if hit else "neutral",
-                           t=t, look=(0, 0.8) if not hit else (0, 0), blink=blink(t, 5), lean=-5 if hit else 0)
-        hx = (a["hand_r"][0] + a["hand_l"][0]) / 2
-        hy = (a["hand_r"][1] + a["hand_l"][1]) / 2
-        with cv.at(hx, hy + 6, 1, rot=-4):             # the book he is reading
-            cv.rect(-46, -62, 46, 4, fill=(250, 222, 120), radius=4, ow=3)
-            cv.rect(-46, -62, -38, 4, fill=(230, 180, 70), radius=2, ow=2.4)
-            cv.text(4, -36, "VÉ", 22, P.ACCENT, "black")
-        for sd in (-1, 1):
-            cv.circle(a["hand_r" if sd > 0 else "hand_l"][0], a["hand_r" if sd > 0 else "hand_l"][1], 12,
-                      fill=P.SKIN_ADULT)
-        cx_, cy_ = a["chest"][0] + 18, a["chest"][1] - 34
+                           t=t, look=(0.6, 0.8) if not hit else (0.5, -0.2), blink=blink(t, 5),
+                           lean=-6 if hit else 0)
+        bx, by = a["hand_r"]
+        fall = ease_in(progress(t, b["attacked"] + 0.1, 0.45))
+        if fall < 1:
+            with cv.at(bx + 4 + 60 * fall, by - 26 + 420 * fall, 1, rot=-4 + 120 * fall):   # the book
+                cv.rect(-46, -34, 46, 32, fill=(250, 222, 120), radius=4, ow=3)
+                cv.rect(-46, -34, -38, 32, fill=(230, 180, 70), radius=2, ow=2.4)
+                cv.text(4, -8, "VÉ", 22, P.ACCENT, "black")
+            if fall <= 0:
+                cv.circle(bx, by, 0.82 * 11 + 1, fill=P.SKIN, ow=3.3)      # thumb over the book edge
+        hl = a["hand_l"]
+        cx_, cy_ = hl[0] + 26, hl[1] - 14                          # just beside the clutching hand
         ap = progress(t, b["attacked"] - 0.15, 0.25)
         if ap > 0:
             sx = lerp(1300, cx_ - 30, ease_in(ap))
@@ -386,15 +390,21 @@ def draw_who(cv, t, b):
     if wp > 0:
         dx = lerp(700, 0, ease_out(wp))
         walking = wp < 1
-        ti = draw_character(cv, "TI", 840 + dx, 660, 1.2, pose="walk" if walking else "point_up", t=t,
-                            expression="happy", look=(0.6, -0.7), blink=blink(t, 3))
-        dad = draw_character(cv, "DAD", 990 + dx, 680, 1.0, pose="walk" if walking else "stand", t=t + 0.2,
+        # Ti reaches out (point pose) and her hand lands exactly in Dad's hanging left hand; Dad stands low
+        # (feet below the frame) so the hand heights meet with both of them on roughly the same floor
+        dad_x, dad_y = 1030 + dx, 760
+        ti_s = 1.55
+        hop = -abs(math.sin(t * 9)) * 7 if walking else 0.0
+        dad = draw_character(cv, "DAD", dad_x, dad_y, 1.0, pose="walk" if walking else "stand", t=t + 0.2,
                              expression="happy", look=(-0.6, 0.6), blink=blink(t, 7))
-        h1, h2 = ti["hand_r"], dad["hand_l"]
-        mx, my = (h1[0] + h2[0]) / 2, (h1[1] + h2[1]) / 2
-        cv.limb([h1, (mx, my)], 13, P.SKIN)
-        cv.limb([h2, (mx, my)], 20, P.SKIN_ADULT)
-        cv.circle(mx, my, 12, fill=P.SKIN_ADULT)
+        h2 = dad["hand_l"]
+        ti_x = h2[0] - 82 * ti_s / 1.5
+        ti_y = h2[1] + 140 * ti_s / 1.5
+        ti = draw_character(cv, "TI", ti_x, ti_y + hop, ti_s, pose="point", t=t,
+                            expression="happy", look=(0.6, -0.7), blink=blink(t, 3))
+        h1 = ti["hand_r"]
+        cv.line([h1, h2], INK, 5)
+        cv.circle(h2[0], h2[1], 10, fill=P.SKIN, ow=3.4)          # the two hands clasped
         es = pop(t, b["especially"] + 0.9, 0.35)
         if es > 0.01:
             with cv.at(1120, 200, es, rot=10):

@@ -11,7 +11,7 @@ from lib import palette as P
 from lib.backgrounds import SOFT, draw_alley, draw_sky
 from lib.characters import draw_character
 from lib.core import ease_in_out, lerp, progress
-from lib.extra_s5_7 import draw_stick, grade
+from lib.extra_s5_7 import draw_stick, grade, to_world
 from lib.fx import fade, vignette
 
 STEP_X = 860
@@ -59,8 +59,13 @@ def render_frame(t, ctx):
         draw_stick(cv, STEP_X - 104, GROUND - 2, length=175, rot=9, color=(150, 112, 70), w=6)
         # the child, alone, head down, breathing
         breath = math.sin(t * 2 * math.pi / 4.2) * 1.2
-        draw_character(cv, "MUI", STEP_X, GROUND - 26 + breath * 0.3, 1.0, pose="sit", expression="sad",
-                       look=(0, 1), blink=1.0, nod=6 + breath, t=0.0, colors=SILHOUETTE)
+        # chin on hand, turned toward the cane; a pure silhouette (no face features)
+        a = draw_character(cv, "MUI", STEP_X, GROUND - 26 + breath * 0.3, 1.0, pose="sit_chin_on_hand",
+                           expression="sad", look=(0, 1), blink=1.0, nod=5 + breath, t=0.0, flip=True,
+                           lean=4, colors=SILHOUETTE)
+        hx, hy = to_world(a["head"], (cx, cy, z))
+        r = a["head_r"]
+        cv.ellipse(hx, hy + r * 0.05, r * 0.86, r * 0.9, fill=SIL, outline=None)
     img = cv.finish()
     img = grade(img, sat=0.12, mul=(0.86, 0.87, 0.94), lift=(6, 6, 10))
     img = vignette(img, 0.7)

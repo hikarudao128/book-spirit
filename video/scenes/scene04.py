@@ -26,7 +26,7 @@ from lib.extra_s2_4 import (chewed_notebook, draw_basin, icon_banana, icon_dog, 
 from lib.fx import flash
 from lib.text import idea_card, label
 
-KIDS = [("HAI", 210), ("TUN", 430), ("TI", 650)]
+KIDS = [("HAI", 220), ("TUN", 425), ("TI", 630)]
 
 
 def beats(ctx):
@@ -113,7 +113,7 @@ def shot_dog(t, ctx, b, cv):
 
 
 def _board(cv, t, b):
-    x0, y0, x1, y1 = 150, 40, 890, 420
+    x0, y0, x1, y1 = 150, 34, 890, 396
     cv.rect(x0 + 8, y0 + 10, x1 + 8, y1 + 10, fill=INK, outline=None, radius=10)
     cv.rect(x0, y0, x1, y1, fill=(200, 200, 205), radius=10)
     cv.rect(x0 + 12, y0 + 12, x1 - 12, y1 - 12, fill=P.WHITE, outline=None, radius=4)
@@ -144,7 +144,7 @@ def shot_board(t, ctx, b, cv):
     proud = b["brilliant"] - 0.1 <= t < b["problem"]
     after = t >= b["problem"]
     for i, (nm, x) in enumerate(KIDS):
-        draw_plastic_stool(cv, x, 712, color=[P.PLASTIC_RED, P.PLASTIC_BLUE, P.PLASTIC_RED][i], scale=1.3)
+        draw_plastic_stool(cv, x, 712, color=[P.PLASTIC_RED, P.PLASTIC_BLUE, P.PLASTIC_RED][i], scale=1.5)
         speaking = ctx.speaking(nm, t)
         pose, jump, expr, look = "sit", 0, None, (0.4, -0.5)
         if speaking:
@@ -156,13 +156,14 @@ def shot_board(t, ctx, b, cv):
             expr, look = "proud", (0, 0)
         if after:
             expr, look = ("neutral" if t < b["adults2"] else ("scared" if nm == "TUN" else "deadpan")), (0, 0)
-        draw_character(cv, nm, x, 640 + jump, 1.3, pose=pose, expression=expr, t=t + i * 0.5, look=look,
+        draw_character(cv, nm, x, 620 + jump, 1.6, pose=pose, expression=expr, t=t + i * 0.5, look=look,
                        mouth_open=ctx.mouth(nm, t), nod=math.sin(t * 20) * 4 if nm == "TUN" and pose == "sit_arms_up" else 0)
     props = ("pointer",) + (("notebook_hat",) if t >= b["hat"] else ())
     expr = "proud" if proud else ("deadpan" if after else "smug")
     look = (-0.6, -0.3) if not after else (0, 0)
     hs = pop(t, b["hat"], 0.3)
-    draw_character(cv, "MUI", 1050, 712, 1.9 * (1 + 0.04 * (hs - 1 if hs < 1 else 0)), pose="point",
+    # pointer tip lands on the board rows (hand ~(882, 494), tip ~(618, 340))
+    draw_character(cv, "MUI", 1010, 712, 2.2 * (1 + 0.04 * (hs - 1 if hs < 1 else 0)), pose="point",
                    props=props, flip=True, expression=expr, t=t, look=look, mouth_open=ctx.mouth("MUI", t))
     if proud:
         for k, (x, y) in enumerate(((170, 70), (880, 90), (860, 440), (140, 420), (1150, 300))):

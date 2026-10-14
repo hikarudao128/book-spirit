@@ -23,6 +23,7 @@ from lib.text import label
 STEP_X = 1100
 GROUND = 560
 WALK_Y = GROUND + 120
+GS = 1.08                    # grown-ups: ~325 px (Old Mui), the scale of the scene-1 adults vs the alley
 DOG_X = 1262
 STOP_X = 1060
 ORDER = (("HAI", 600), ("TI", 420), ("TUN", 240), ("MUI", 0))      # offset ahead of Mui
@@ -72,7 +73,7 @@ def _mui_x(t, b):
 def _camera(t, b):
     pan = lerp(560, 760, ease_in_out(clamp(t / b["zoom0"])))
     p = ease_in_out(progress(t, b["zoom0"], 1.6))
-    return lerp(pan, 1150, p), lerp(360, 470, p), lerp(1.0, 1.55, p)
+    return lerp(pan, 1150, p), lerp(360, 452, p), lerp(1.0, 1.4, p)
 
 
 def render_frame(t, ctx):
@@ -103,7 +104,7 @@ def render_frame(t, ctx):
                 + 260 * max(0.0, t - b["stop"] + 0.6) ** 1.5      # they keep going (and hurry off)
             if x > 2100:
                 continue
-            a = draw_grown(cv, nm, x, WALK_Y + 4, 0.86, pose="walk", t=t + off * 0.003, expression="bored",
+            a = draw_grown(cv, nm, x, WALK_Y + 4, GS, pose="walk", t=t + off * 0.003, expression="bored",
                            look=(0.5, 0.3))
             draw_briefcase(cv, *_w(a["hand_r"], cx, cy, z), 0.9)
         # Old Mui
@@ -114,7 +115,7 @@ def render_frame(t, ctx):
         expr = "bored"
         if t >= b["smile"]:
             expr = "proud"
-        a = draw_grown(cv, "MUI", mx, WALK_Y + 4, 0.86, pose="walk" if walking_mui else "stand",
+        a = draw_grown(cv, "MUI", mx, WALK_Y + 4, GS, pose="walk" if walking_mui else "stand",
                        t=t, expression=expr, look=look, mouth_open=ctx.mouth("OLD MUI", t),
                        blink=blink(t, 5) if t < b["look"] else 0)
         draw_briefcase(cv, *_w(a["hand_r"], cx, cy, z), 0.9)
