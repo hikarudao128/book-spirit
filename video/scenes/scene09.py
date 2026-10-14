@@ -28,7 +28,7 @@ from lib import palette as P
 from lib.backgrounds import (SOFT, draw_alley, draw_book_cover, draw_cloud, draw_dinner_table, draw_kitchen,
                              draw_plastic_stool, draw_sun)
 from lib.characters import draw_character
-from lib.core import INK, clamp, ease_in_out, ease_out, ease_out_back, lerp, lerp_color, pop, progress
+from lib.core import INK, Canvas, clamp, ease_in_out, ease_out, ease_out_back, lerp, lerp_color, pop, progress
 from lib.extra_s8_11 import (blink, draw_motorbike, draw_rails, draw_sign, draw_steam_puffs, draw_tower,
                              draw_train_car, sign_layout)
 from lib.text import label, name_tag, text_width
@@ -139,9 +139,9 @@ def _draw_mui_stage(cv, k, t, look, expr):
     elif k == 1:
         draw_character(cv, "MUI", STEP_X, y, 1.0, expression=expr or "bored", variant=TEEN, **kw)
     elif k == 2:
-        draw_character(cv, "OLD_MUI", STEP_X, y, 0.95, expression=expr or "bored", variant=YOUNG, **kw)
+        draw_character(cv, "OLD_MUI", STEP_X, y, 0.85, expression=expr or "bored", variant=YOUNG, **kw)
     else:
-        draw_character(cv, "OLD_MUI", STEP_X, y, 0.95, expression=expr or "bored", **kw)
+        draw_character(cv, "OLD_MUI", STEP_X, y, 0.85, expression=expr or "bored", **kw)
 
 
 def _camera1(t, b):
@@ -439,7 +439,8 @@ def _booth(cv, t, b):
         cv.rect(-56, -84, 56, -54, fill=P.WHITE, ow=2.4, radius=4)
         cv.text(0, -69, "TICKETS", 15, INK, "black")
         # hook + cap on the side wall
-        hx, hy = 70, -40
+        hx, hy = 116, -150
+        cv.limb([(88, hy), (hx, hy)], 5, (120, 120, 130))                                 # peg on the side
         cv.circle(hx, hy, 4, fill=(120, 120, 130), ow=2)
         sw = math.sin(t * 2.2) * 6 + 10 * math.sin(t * 7) * math.exp(-max(0, t - b["no_insp"]) * 2) * \
             (t > b["no_insp"])
@@ -451,7 +452,15 @@ def _booth(cv, t, b):
 
 
 def _train_x(t, b):
-    return lerp(-1000, 1500, progress(t, b["cut_train"] + 0.2, b["nobody"] - b["cut_train"] + 0.2))
+    """Chug in, linger mid-frame while the kids wave ("...any time you like."), then leave before "Nobody"."""
+    t0, t1, t2 = b["cut_train"] + 0.2, b["back"] + 0.3, b["nobody"] - 0.35
+    if t < t1:
+        u = progress(t, t0, t1 - t0)
+        return lerp(-1000, 620, 1 - (1 - u) ** 2)
+    if t < t2:
+        return lerp(620, 760, progress(t, t1, t2 - t1))
+    u = progress(t, t2, 0.75)
+    return lerp(760, 2400, u * u)
 
 
 def phase4(cv, t, b):
@@ -467,13 +476,16 @@ def phase4(cv, t, b):
         draw_rails(cv, -400, 1700, RAIL_Y)
         # the train (engine leads to the right)
         tx = _train_x(t, b)
-        moving = 0 < progress(t, b["cut_train"] + 0.2, b["nobody"] - b["cut_train"] + 0.2) < 1
+        moving = b["cut_train"] + 0.2 < t < b["nobody"] + 0.4
 
         def kids_in(names):
             def f(cv_, wx, wy, ww, wh, i):
                 if i < len(names) and names[i]:
                     nm = names[i]
-                    sc = 0.62 if nm != "OLD_MUI" else 0.5
+                    if nm == "OLD_MUI":
+                        _head_in_window(cv_, wx, wy, ww, wh, t)
+                        return
+                    sc = 0.62
                     hc = wy + wh * 0.55
                     off = 132 if nm != "OLD_MUI" else 410
                     expr = "happy" if nm != "OLD_MUI" else "proud"
@@ -492,10 +504,20 @@ def phase4(cv, t, b):
         _booth(cv, t, b)
     ls = pop(t, b["no_insp"] + 0.1, 0.3) * (1 - progress(t, b["nobody"] - 0.2, 0.2))
     if ls > 0.01:
-        label(cv, 1040, 360, "INSPECTOR: ---", 24, bg=P.WHITE, scale=ls, rot=4)
+        label(cv, 1040, 398, "INSPECTOR: ---", 24, bg=P.WHITE, scale=ls, rot=4)
     cs = pop(t, b["back"], 0.3) * (1 - progress(t, b["nobody"] - 0.2, 0.2))
     if cs > 0.01:
         label(cv, 330, 110, "NEXT STOP: CHILDHOOD", 26, fill=P.WHITE, bg=P.ACCENT2, scale=cs)
+
+
+def _head_in_window(cv, wx, wy, ww, wh, t):
+    """Old Mui's head only, framed in the cab window: draw him on a small offscreen canvas and paste the
+    crop (the window frame cannot mask an adult's long legs below the car)."""
+    k = 4
+    sub = Canvas(bg=(255, 236, 190), ss=1, w=int(ww * k), h=int(wh * k))
+    with sub.at(ww * k / 2, wh * k * 0.62 + 382 * 0.55 * k, 0.55 * k):
+        draw_character(sub, "OLD_MUI", 0, 0, 1.0, expression="proud", t=t, look=(0.6, 0), blink=blink(t, 8))
+    cv.paste(sub.finish(), wx, wy, scale=1.0 / k)
 
 
 # ================================================================== frame
