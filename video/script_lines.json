@@ -1,0 +1,701 @@
+[
+ {
+  "id": "s01_l01",
+  "scene": 1,
+  "speaker": "NARRATOR",
+  "text": "A small neighborhood in Vietnam. Sunshine. Kites. Street food.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s01_l02",
+  "scene": 1,
+  "speaker": "NARRATOR",
+  "text": "No deadlines, no rent, no emails.",
+  "pause_after": 0.35
+ },
+ {
+  "id": "s01_l03",
+  "scene": 1,
+  "speaker": "NARRATOR",
+  "text": "Truly, the best time of anyone's life.",
+  "pause_after": 0.9
+ },
+ {
+  "id": "s01_l04",
+  "scene": 1,
+  "speaker": "NARRATOR",
+  "text": "Meet Mui. He is eight years old, and he has just figured out that life is boring.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s01_l05",
+  "scene": 1,
+  "speaker": "MUI",
+  "text": "Life is boring.",
+  "pause_after": 0.8,
+  "length_scale": 1.3
+ },
+ {
+  "id": "s01_l06",
+  "scene": 1,
+  "speaker": "NARRATOR",
+  "text": "Thank you, Mui.",
+  "pause_after": 0.0,
+  "length_scale": 1.2
+ },
+ {
+  "id": "s02_l01",
+  "scene": 2,
+  "speaker": "NARRATOR",
+  "text": "To be fair, he has evidence.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s02_l02",
+  "scene": 2,
+  "speaker": "NARRATOR",
+  "text": "Every day, Mui wakes up, brushes his teeth, eats breakfast, goes to school, memorizes things,",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s02_l03",
+  "scene": 2,
+  "speaker": "NARRATOR",
+  "text": "comes home, does homework, gets told to do more homework, goes to bed, wakes up, brushes his teeth —",
+  "pause_after": 0.0,
+  "length_scale": 0.85
+ },
+ {
+  "id": "s02_l04",
+  "scene": 2,
+  "speaker": "MUI",
+  "text": "See?",
+  "pause_after": 0.6
+ },
+ {
+  "id": "s02_l05",
+  "scene": 2,
+  "speaker": "NARRATOR",
+  "text": "And school is the worst part.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s02_l06",
+  "scene": 2,
+  "speaker": "TEACHER",
+  "text": "Repeat after me.",
+  "pause_after": 0.25
+ },
+ {
+  "id": "s02_l07",
+  "scene": 2,
+  "speaker": "THE WHOLE CLASS",
+  "text": "Repeat after me.",
+  "pause_after": 0.8
+ },
+ {
+  "id": "s02_l08",
+  "scene": 2,
+  "speaker": "TEACHER",
+  "text": "...Not that part.",
+  "pause_after": 0.6,
+  "tts_text": "Not that part."
+ },
+ {
+  "id": "s02_l09",
+  "scene": 2,
+  "speaker": "NARRATOR",
+  "text": "Mui feels like a prisoner.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s02_l10",
+  "scene": 2,
+  "speaker": "NARRATOR",
+  "text": "Which, if you have ever been eight years old in a classroom on a hot afternoon, is not a crazy comparison.",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s03_l01",
+  "scene": 3,
+  "speaker": "NARRATOR",
+  "text": "Luckily, Mui is not alone. He has a crew.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s03_l02",
+  "scene": 3,
+  "speaker": "NARRATOR",
+  "text": "Hai. Fast, sneaky, and never, ever sorry.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s03_l03",
+  "scene": 3,
+  "speaker": "NARRATOR",
+  "text": "Tun. Sweet, gentle, and agrees with literally everything.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s03_l04",
+  "scene": 3,
+  "speaker": "NARRATOR",
+  "text": "And Ti. Stylish, confident, and missing her two front teeth.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s03_l05",
+  "scene": 3,
+  "speaker": "TI",
+  "text": "It'th a look.",
+  "pause_after": 0.6,
+  "tts_text": "Ith a look."
+ },
+ {
+  "id": "s03_l06",
+  "scene": 3,
+  "speaker": "NARRATOR",
+  "text": "Together, they decide that if the adult world is boring, they will simply... change it.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s03_l07",
+  "scene": 3,
+  "speaker": "HAI",
+  "text": "How?",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s03_l08",
+  "scene": 3,
+  "speaker": "MUI",
+  "text": "I have three ideas.",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s04_l01",
+  "scene": 4,
+  "speaker": "NARRATOR",
+  "text": "Idea number one. Who decided that a dog is called a \"dog\"? Adults.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s04_l02",
+  "scene": 4,
+  "speaker": "NARRATOR",
+  "text": "So the kids invent their own words.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s04_l03",
+  "scene": 4,
+  "speaker": "MUI",
+  "text": "From now on, a notebook is a \"hat\".",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s04_l04",
+  "scene": 4,
+  "speaker": "HAI",
+  "text": "A dog is a \"banana\".",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s04_l05",
+  "scene": 4,
+  "speaker": "TUN",
+  "text": "Okay!",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s04_l06",
+  "scene": 4,
+  "speaker": "TI",
+  "text": "And your feet are your \"mouth\".",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s04_l07",
+  "scene": 4,
+  "speaker": "NARRATOR",
+  "text": "It's a brilliant plan. Just one problem: nobody told the adults.",
+  "pause_after": 0.6
+ },
+ {
+  "id": "s04_l08",
+  "scene": 4,
+  "speaker": "MOM",
+  "text": "Mui, go wash your feet before dinner.",
+  "pause_after": 0.7
+ },
+ {
+  "id": "s04_l09",
+  "scene": 4,
+  "speaker": "MUI",
+  "text": "...You want me to wash my mouth? With the foot water?",
+  "pause_after": 0.4,
+  "tts_text": "You want me to wash my mouth? With the foot water?"
+ },
+ {
+  "id": "s04_l10",
+  "scene": 4,
+  "speaker": "MOM",
+  "text": "What?",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s04_l11",
+  "scene": 4,
+  "speaker": "MUI",
+  "text": "Also, the banana ate my hat.",
+  "pause_after": 1.2
+ },
+ {
+  "id": "s04_l12",
+  "scene": 4,
+  "speaker": "NARRATOR",
+  "text": "And that went just about as well as you'd expect.",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s05_l01",
+  "scene": 5,
+  "speaker": "NARRATOR",
+  "text": "Idea number two. If adults get to be in charge, the kids will just become adults.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s05_l02",
+  "scene": 5,
+  "speaker": "NARRATOR",
+  "text": "Everyone picks a job.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s05_l03",
+  "scene": 5,
+  "speaker": "HAI",
+  "text": "Chief of police.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s05_l04",
+  "scene": 5,
+  "speaker": "TUN",
+  "text": "Flight attendant!",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s05_l05",
+  "scene": 5,
+  "speaker": "MUI",
+  "text": "School principal.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s05_l06",
+  "scene": 5,
+  "speaker": "TI",
+  "text": "Snow White.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s05_l07",
+  "scene": 5,
+  "speaker": "HAI",
+  "text": "That's not a job.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s05_l08",
+  "scene": 5,
+  "speaker": "TI",
+  "text": "It is now.",
+  "pause_after": 0.6
+ },
+ {
+  "id": "s05_l09",
+  "scene": 5,
+  "speaker": "NARRATOR",
+  "text": "They also play house. But in their house, the rules are the right way round.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s05_l10",
+  "scene": 5,
+  "speaker": "TI",
+  "text": "What are you doing?!",
+  "pause_after": 0.4,
+  "role": "AS MOM",
+  "tts_text": "What are you doing?!"
+ },
+ {
+  "id": "s05_l11",
+  "scene": 5,
+  "speaker": "TUN",
+  "text": "...My homework?",
+  "pause_after": 0.3,
+  "role": "AS CHILD",
+  "tts_text": "My homework?"
+ },
+ {
+  "id": "s05_l12",
+  "scene": 5,
+  "speaker": "MUI",
+  "text": "In THIS house? Go outside and get dirty, young lady!",
+  "pause_after": 0.0,
+  "role": "AS DAD",
+  "tts_text": "In this house? Go outside and get dirty, young lady!"
+ },
+ {
+  "id": "s06_l01",
+  "scene": 6,
+  "speaker": "NARRATOR",
+  "text": "Idea number three, and this is where it gets serious.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s06_l02",
+  "scene": 6,
+  "speaker": "NARRATOR",
+  "text": "The kids hold a court, and the defendants are... their parents.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s06_l03",
+  "scene": 6,
+  "speaker": "HAI",
+  "text": "Order! Order in the court!",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s06_l04",
+  "scene": 6,
+  "speaker": "HAI",
+  "text": "Charge number one: telling kids that lying is wrong, then telling the neighbor \"we're not home\" when she comes to borrow money.",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s06_l05",
+  "scene": 6,
+  "speaker": "NARRATOR",
+  "text": "I made that charge up. But if you grew up in Vietnam, you know it's true.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s06_l06",
+  "scene": 6,
+  "speaker": "HAI",
+  "text": "How do you plead?",
+  "pause_after": 1.0
+ },
+ {
+  "id": "s06_l07",
+  "scene": 6,
+  "speaker": "TUN",
+  "text": "They're at work.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s06_l08",
+  "scene": 6,
+  "speaker": "HAI",
+  "text": "Then they're guilty. Court dismissed!",
+  "pause_after": 0.8
+ },
+ {
+  "id": "s06_l09",
+  "scene": 6,
+  "speaker": "NARRATOR",
+  "text": "The parents found out.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s06_l10",
+  "scene": 6,
+  "speaker": "NARRATOR",
+  "text": "And every single kid got a beating.",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s07_l01",
+  "scene": 7,
+  "speaker": "NARRATOR",
+  "text": "Here's the thing. It's funny in the book, too, until you notice how often it ends this way.",
+  "pause_after": 0.6,
+  "length_scale": 1.18
+ },
+ {
+  "id": "s07_l02",
+  "scene": 7,
+  "speaker": "NARRATOR",
+  "text": "The kids imagine. The adults punish.",
+  "pause_after": 0.6,
+  "length_scale": 1.18
+ },
+ {
+  "id": "s07_l03",
+  "scene": 7,
+  "speaker": "NARRATOR",
+  "text": "The book doesn't lecture you about it.",
+  "pause_after": 0.4,
+  "length_scale": 1.18
+ },
+ {
+  "id": "s07_l04",
+  "scene": 7,
+  "speaker": "NARRATOR",
+  "text": "It just shows you, again and again, how quickly grown-ups reach for the stick, and lets you sit with that.",
+  "pause_after": 0.0,
+  "length_scale": 1.18
+ },
+ {
+  "id": "s08_l01",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "So, here's how childhood works.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s08_l02",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "Renaming everything went badly.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s08_l03",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "Becoming adults went worse.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s08_l04",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "Suing your parents went... about how you'd expect.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s08_l05",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "And then they also tried raising stray dogs as house pets.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s08_l06",
+  "scene": 8,
+  "speaker": "HAI",
+  "text": "Can we keep them?",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s08_l07",
+  "scene": 8,
+  "speaker": "DAD",
+  "text": "No.",
+  "pause_after": 0.7
+ },
+ {
+  "id": "s08_l08",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "Kids have an idea.",
+  "pause_after": 0.2
+ },
+ {
+  "id": "s08_l09",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "Adults find out.",
+  "pause_after": 0.2
+ },
+ {
+  "id": "s08_l10",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "Everything goes back to normal.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s08_l11",
+  "scene": 8,
+  "speaker": "NARRATOR",
+  "text": "And repeat.",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s09_l01",
+  "scene": 9,
+  "speaker": "NARRATOR",
+  "text": "But here's the twist. The person telling this story isn't eight.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s09_l02",
+  "scene": 9,
+  "speaker": "NARRATOR",
+  "text": "It's Mui, almost fifty years old, looking back.",
+  "pause_after": 0.6
+ },
+ {
+  "id": "s09_l03",
+  "scene": 9,
+  "speaker": "OLD MUI",
+  "text": "What are you doing?",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s09_l04",
+  "scene": 9,
+  "speaker": "HIS KID",
+  "text": "Texting my girlfriend.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s09_l05",
+  "scene": 9,
+  "speaker": "OLD MUI",
+  "text": "At your age?",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s09_l06",
+  "scene": 9,
+  "speaker": "OLD MUI",
+  "text": "...Actually, at your age I was suing my dad.",
+  "pause_after": 0.6,
+  "tts_text": "Actually, at your age I was suing my dad."
+ },
+ {
+  "id": "s09_l07",
+  "scene": 9,
+  "speaker": "NARRATOR",
+  "text": "Little Mui thought adults were boring. Old Mui has become one.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s09_l08",
+  "scene": 9,
+  "speaker": "NARRATOR",
+  "text": "So who is this book really for?",
+  "pause_after": 0.6
+ },
+ {
+  "id": "s09_l09",
+  "scene": 9,
+  "speaker": "NARRATOR",
+  "text": "The book says it is for anyone who was once a child. Which is everyone.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s09_l10",
+  "scene": 9,
+  "speaker": "NARRATOR",
+  "text": "Its last chapter is about a train with no ticket inspector.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s09_l11",
+  "scene": 9,
+  "speaker": "NARRATOR",
+  "text": "You can go back to childhood any time you like. Nobody checks.",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s10_l01",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "So, is it worth the ticket?",
+  "pause_after": 0.5
+ },
+ {
+  "id": "s10_l02",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "The good stuff. It's short. It's funny.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s10_l03",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "And it's told in a child's voice, which turns out to be the sharpest weapon against adult nonsense ever invented.",
+  "pause_after": 0.4
+ },
+ {
+  "id": "s10_l04",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "It won the S.E.A. Write Award in 2010 and sold hundreds of thousands of copies in Vietnam.",
+  "pause_after": 0.3,
+  "tts_text": "It won the Sea Write Award in twenty ten, and sold hundreds of thousands of copies in Vietnam."
+ },
+ {
+  "id": "s10_l05",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "Mostly, I assume, to adults who felt personally attacked.",
+  "pause_after": 0.7
+ },
+ {
+  "id": "s10_l06",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "Now, to be fair. If you want a big plot, this isn't it.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s10_l07",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "The book is a string of episodes, not one big adventure.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s10_l08",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "And if you read the English version, some reviewers say a bit of the Southern Vietnamese flavor gets lost on the way.",
+  "pause_after": 0.6
+ },
+ {
+  "id": "s10_l09",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "Who should read it? Anyone who was once eight.",
+  "pause_after": 0.3
+ },
+ {
+  "id": "s10_l10",
+  "scene": 10,
+  "speaker": "NARRATOR",
+  "text": "Especially anyone who now has an eight-year-old.",
+  "pause_after": 0.0
+ },
+ {
+  "id": "s11_l01",
+  "scene": 11,
+  "speaker": "NARRATOR",
+  "text": "And so, Mui and his friends grew up, became sensible adults, and never did anything silly ever again.",
+  "pause_after": 1.0
+ },
+ {
+  "id": "s11_l02",
+  "scene": 11,
+  "speaker": "OLD MUI",
+  "text": "...Banana.",
+  "pause_after": 0.8,
+  "tts_text": "Banana.",
+  "length_scale": 1.25
+ },
+ {
+  "id": "s11_l03",
+  "scene": 11,
+  "speaker": "NARRATOR",
+  "text": "For about forty years.",
+  "pause_after": 0.0
+ }
+]

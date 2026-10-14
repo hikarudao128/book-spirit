@@ -1,0 +1,24 @@
+{
+  "_doc": "Scene timing knobs. lead_in = silence before first line, tail = hold after last line (seconds). line_gap_before = extra silent hold inserted before a given line id (for visual gags), added on top of the previous line's pause_after from script_lines.json.",
+  "defaults": {"lead_in": 0.5, "tail": 1.0},
+  "scene_padding": {
+    "1":  {"lead_in": 1.5, "tail": 2.2},
+    "2":  {"tail": 1.2},
+    "3":  {"tail": 1.5},
+    "4":  {"tail": 1.5},
+    "5":  {"tail": 2.0},
+    "6":  {"tail": 2.0},
+    "7":  {"lead_in": 1.5, "tail": 2.5},
+    "8":  {"tail": 1.5},
+    "9":  {"tail": 1.5},
+    "10": {"tail": 1.2},
+    "11": {"lead_in": 1.0, "tail": 5.0}
+  },
+  "line_gap_before": {
+    "s01_l04": 0.6,
+    "s04_l12": 0.6,
+    "s06_l07": 0.6,
+    "s09_l09": 0.8,
+    "s11_l02": 0.8
+  }
+}
