@@ -86,18 +86,38 @@
     anh:    { k: 1.15, hair: 'short', hairC: '#3A2A1F', shirt: '#E07A5F' },
     em:     { k: 0.98, hair: 'tuft', hairC: '#3A2A1F', shirt: '#81B29A' },
   };
-  const E1 = [6, -262], E2 = [36, -262], MO = [24, -224];
+  // Đầu hình quả trứng: hai bên hơi thẳng, cằm tròn (tham khảo kiểu đầu trứng của OverSimplified)
+  const HEAD = 'M 2 -334 C 50 -334 66 -300 66 -258 C 66 -214 42 -190 2 -190 C -38 -190 -62 -214 -62 -258 C -62 -300 -46 -334 2 -334 Z';
+  const HAIR_LINES = { spiky: 'M -44 -318 L -36 -304 M -8 -334 L -2 -316 M 30 -330 L 34 -314 M 58 -316 L 56 -302' };
+  function shade(hex, k) {              // k < 1: tối hơn, k > 1: sáng hơn
+    const n = parseInt(hex.slice(1), 16);
+    const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(clamp(k < 1 ? v * k : v + (255 - v) * (k - 1) * 0.35, 0, 255)));
+    return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+  }
+  const E1 = [6, -256], E2 = [36, -256], MO = [24, -220];
+  function browSVG(kind, [x, y], i) {   // lông mày dày đổi theo biểu cảm; i = 0 mắt xa, 1 mắt gần
+    const st = `stroke="${INK}" stroke-width="6.5" stroke-linecap="round" fill="none"`;
+    const arc = (dy, h) => `<path d="M ${x - 9} ${y + dy} Q ${x} ${y + dy - h} ${x + 9} ${y + dy}" ${st}/>`;
+    const tilt = (a, b) => `<path d="M ${x - 9} ${y + a} L ${x + 9} ${y + b}" ${st}/>`;
+    switch (kind) {
+      case 'cuoi': case 'nham': return arc(-22, 5);
+      case 'tron': return arc(-25, 4);
+      case 'luom': return i ? arc(-23, 5) : tilt(-20, -14);   // nhướng một bên mày
+      case 'x': return i ? tilt(-16, -24) : tilt(-24, -16);
+      default: return arc(-20, 3);
+    }
+  }
   function eyeSVG(kind, [x, y]) {
-    const st = `stroke="${INK}" stroke-width="6" stroke-linecap="round" fill="none"`;
+    const st = `stroke="${INK}" stroke-width="7" stroke-linecap="round" fill="none"`;
     switch (kind) {
       case 'blink': return `<path d="M ${x - 9} ${y} L ${x + 9} ${y}" ${st}/>`;
-      case 'half': return `<path d="M ${x} ${y - 4} L ${x} ${y + 5}" ${st}/>`;
+      case 'half': return `<ellipse cx="${x}" cy="${y + 3}" rx="7" ry="4" fill="${INK}"/>`;
       case 'cuoi': return `<path d="M ${x - 9} ${y + 4} Q ${x} ${y - 9} ${x + 9} ${y + 4}" ${st}/>`;
       case 'nham': return `<path d="M ${x - 9} ${y - 2} Q ${x} ${y + 7} ${x + 9} ${y - 2}" ${st}/>`;
       case 'tron': return `<circle cx="${x}" cy="${y}" r="10" fill="#FFFFFF" stroke="${INK}" stroke-width="5"/><circle cx="${x + 1}" cy="${y + 1}" r="4" fill="${INK}"/>`;
       case 'luom': return `<path d="M ${x - 10} ${y - 3} L ${x + 10} ${y - 3}" ${st}/><circle cx="${x + 5}" cy="${y + 3}" r="4" fill="${INK}"/>`;
       case 'x': return `<path d="M ${x - 8} ${y - 8} L ${x + 8} ${y + 8} M ${x + 8} ${y - 8} L ${x - 8} ${y + 8}" ${st}/>`;
-      default: return `<path d="M ${x} ${y - 10} L ${x} ${y + 10}" ${st}/>`;
+      default: return `<ellipse cx="${x}" cy="${y}" rx="7" ry="10" fill="${INK}"/>`;
     }
   }
   function mouthSVG(kind, [x, y]) {
@@ -160,11 +180,15 @@
     const legs = mk('g', { stroke: INK, 'stroke-width': 7, 'stroke-linecap': 'round', fill: 'none' }, g);
     const hip = -16 - 102 * legL;
     const legPath = mk('path', {}, legs);
-    mk('ellipse', { cx: -20, cy: -9, rx: 16, ry: 9, fill: '#FFFFFF', 'stroke-width': 5 }, legs);
-    mk('ellipse', { cx: 21, cy: -9, rx: 16, ry: 9, fill: '#FFFFFF', 'stroke-width': 5 }, legs);
+    mk('ellipse', { cx: -20, cy: -9, rx: 15, ry: 8, fill: INK, 'stroke-width': 4 }, legs);
+    mk('ellipse', { cx: 21, cy: -9, rx: 15, ry: 8, fill: INK, 'stroke-width': 4 }, legs);
     const up0 = mk('g', { transform: `translate(0 ${u})` }, g);
     const upper = mk('g', {}, up0);
-    mk('path', { d: 'M -27 -190 L 27 -190 L 33 -112 Q 0 -106 -33 -112 Z', fill: d.shirt, stroke: INK, 'stroke-width': 6, 'stroke-linejoin': 'round' }, upper);
+    // áo dài xuống che đầu chân (thân ≈ đầu, chân ngắn lại); nửa sau tô đậm hơn như đổ bóng
+    const SHIRT = 'M -27 -190 L 27 -190 L 34 -100 Q 0 -93 -34 -100 Z';
+    mk('path', { d: SHIRT, fill: d.shirt }, upper);
+    mk('path', { d: 'M -27 -190 L -13 -190 L -15 -96 Q -25 -97 -34 -100 Z', fill: shade(d.shirt, 0.78) }, upper);
+    mk('path', { d: SHIRT, fill: 'none', stroke: INK, 'stroke-width': 6, 'stroke-linejoin': 'round' }, upper);
     if (d.polo) {                         // cổ polo viền trắng + logo đỏ trên ngực
       for (const fl of ['M -22 -192 L -1 -191 L -10 -170 Z', 'M 1 -191 L 22 -192 L 10 -170 Z']) {
         mk('path', { d: fl, fill: d.shirt, stroke: INK, 'stroke-width': 4, 'stroke-linejoin': 'round' }, upper);
@@ -194,8 +218,10 @@
     const book = mk('g', { display: 'none' }, upper);
     book.innerHTML = `<path d="M 56 -114 L 18 -134 L 18 -190 L 56 -170 Z" fill="#FFFFFF" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M 56 -114 L 94 -134 L 94 -190 L 56 -170 Z" fill="#F4F6F8" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M 28 -160 L 48 -150 M 28 -148 L 48 -138 M 66 -150 L 86 -160 M 66 -138 L 86 -148" stroke="#9AA6B5" stroke-width="3"/>`;
     const head = mk('g', {}, upper);
-    mk('rect', { x: -60, y: -332, width: 124, height: 140, rx: 26, fill: SKIN, stroke: INK, 'stroke-width': 6 }, head);
+    mk('path', { d: HEAD, fill: SKIN, stroke: INK, 'stroke-width': 6 }, head);
     mk('path', { d: HAIR[d.hair], fill: d.hairC, stroke: INK, 'stroke-width': 6, 'stroke-linejoin': 'round' }, head);
+    if (HAIR_LINES[d.hair]) mk('path', { d: HAIR_LINES[d.hair], stroke: shade(d.hairC, 1.6), 'stroke-width': 4, 'stroke-linecap': 'round', fill: 'none' }, head);
+    const brows = mk('g', {}, head);
     if (d.bags) mk('path', { d: 'M -2 -244 Q 6 -238 14 -244 M 28 -244 Q 36 -238 44 -244', stroke: '#9A8FA6', 'stroke-width': 4, fill: 'none', 'stroke-linecap': 'round' }, head);
     const eyes = mk('g', {}, head), mouth = mk('g', {}, head);
     const arms = mk('g', { stroke: INK, 'stroke-width': 7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', fill: 'none' }, upper);
@@ -215,11 +241,11 @@
     const fxg = mk('g', {}, L.fx);
     const r = rng(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
     const a = {
-      id, d, u, hip, g, legPath, upper, head, tie, book, sleeves, eyesG: eyes, mouthG: mouth, armL, armR, handL, handR, fxg, r,
+      id, d, u, hip, g, legPath, upper, head, tie, book, sleeves, brows, eyesG: eyes, mouthG: mouth, armL, armR, handL, handR, fxg, r,
       vis: false, x: 0, y: GROUND, flip: false, k: d.k, pop: 1, sq: 0, dy: 0, slideX: 0, lean: 0,
       arms: clonePose(POSES.dung), pose: 'dung', eyes: 'thuong', mouthRest: 'ngam', mouthOv: null, fakeTalk: false,
       blinkF: -100, nextBlink: sec(0.5) + Math.floor(r() * sec(2)), tieA: 0, tieV: 0, kicks: [], fx: [],
-      phase: r() * Math.PI * 2, talkS: 0, last: { eyes: '', mouth: '', hL: '', hR: '' },
+      phase: r() * Math.PI * 2, talkS: 0, last: { eyes: '', brows: '', mouth: '', hL: '', hR: '' },
     };
     actors[id] = a;
     return a;
@@ -253,6 +279,7 @@
     a.legPath.setAttribute('d', `M -9 ${a.hip} L -15 -16 M 9 ${a.hip} L 15 -16`);
     const ek = blinkKey(a);
     if (ek !== a.last.eyes) { a.eyesG.innerHTML = eyeSVG(ek, E1) + eyeSVG(ek, E2); a.last.eyes = ek; }
+    if (a.eyes !== a.last.brows) { a.brows.innerHTML = browSVG(a.eyes, E1, 0) + browSVG(a.eyes, E2, 1); a.last.brows = a.eyes; }
     const mkey = mouthFor(a);
     if (mkey !== a.last.mouth) { a.mouthG.innerHTML = mouthSVG(mkey, MO); a.last.mouth = mkey; }
     for (const side of ['L', 'R']) {
