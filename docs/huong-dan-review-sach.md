@@ -147,6 +147,7 @@ Nếu muốn bàn kết truyện, twist hay ý nghĩa sâu cần biết toàn b�
 - **Ví von đời thường** để biến nhận định trừu tượng thành hình ảnh dễ nhớ: "cuốn sách như tô phở không người lái: đủ topping, thiếu nước dùng".
 - Hài hước để **phục vụ** luận điểm, không thay thế luận điểm. Mỗi câu đùa vẫn nên chứa một ý đánh giá.
 - Hỏi lại người đọc: "Các bạn có thấy thế không?" để mời bình luận.
+- Kỹ thuật kể chuyện cho phần tóm tắt và phân tích (nhịp câu, nhân cách hóa, gọi lại, nói giảm, biết lúc thôi đùa) có trong [`phan-tich-ke-chuyen-oversimplified.md`](phan-tich-ke-chuyen-oversimplified.md).
 
 ## 11. Đạo đức và bản quyền
 

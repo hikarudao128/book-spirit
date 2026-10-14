@@ -5,4 +5,5 @@ Tài liệu và công cụ để viết review sách.
 - [`docs/huong-dan-review-sach.md`](docs/huong-dan-review-sach.md): phương pháp review sách, kèm checklist trước khi đăng.
 - [`templates/review-sach.md`](templates/review-sach.md): template điền sẵn cho một bài review.
 - [`docs/phan-tich-cach-review-the-reviewer.md`](docs/phan-tich-cach-review-the-reviewer.md): phân tích 5 video review phim của kênh The Reviewer, nguồn của phương pháp trên.
-- [`sources/transcripts/`](sources/transcripts/): transcript gốc của 5 video (phụ đề tự động tiếng Việt của YouTube).
+- [`docs/phan-tich-ke-chuyen-oversimplified.md`](docs/phan-tich-ke-chuyen-oversimplified.md): phân tích cách diễn đạt và kể chuyện trong 4 video Thế chiến I và II của kênh OverSimplified, kèm cách áp dụng vào review sách.
+- [`sources/transcripts/`](sources/transcripts/): transcript gốc của các video (5 video The Reviewer: phụ đề tự động tiếng Việt; 4 video OverSimplified: phụ đề tiếng Anh).
