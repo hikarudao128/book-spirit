@@ -23,7 +23,8 @@ left faces left even without flip.
 
 Names: MUI (engine `mui`), OLD_MUI (`muilon`), HAI (`haico`), TUN (`tun`), TI (`tisun`), HIS_KID (`anh`),
 KID (`em`, generic classmate; recolour via `variant` / `colors`), and MOM, DAD, TEACHER, VENDOR, which
-are all drawn as Mọt (`mot`/`mot2`). Only uniform scale (k) differs from the engine. Plus draw_dog(...).
+have new designs built only from engine parts (see SPECS); MOT is the engine `mot`. Only uniform scale (k)
+differs from the engine. Plus draw_dog(...).
 """
 import math
 import re
@@ -68,12 +69,23 @@ HAIR = {
     "messy": "M -66 -262 L -72 -300 Q -66 -344 -6 -346 Q 52 -348 72 -306 L 74 -268 L 60 -290 L 54 -270 "
              "L 40 -296 L 24 -282 L 14 -302 Q -28 -300 -52 -282 Z",
     "cap_short": "M -62 -282 Q -60 -334 0 -336 Q 62 -334 64 -284 Q 0 -300 -62 -282 Z",   # under a hat
+    # adult cast (MOM, DAD, TEACHER), same rules: one closed path, inner edge above the brows, outer edge
+    # outside the head outline so the egg never pokes through
+    "low_bun": "M -70 -238 Q -82 -344 2 -346 Q 72 -344 70 -282 Q 50 -312 18 -314 Q -16 -314 -40 -294 "
+               "Q -56 -276 -58 -238 Z",                                     # swept back; bun drawn behind
+    "side_part": "M -66 -268 Q -72 -334 -26 -346 L -20 -340 Q 20 -362 58 -342 Q 76 -322 70 -284 "
+                 "Q 44 -310 6 -306 Q -40 -300 -66 -268 Z",                  # parted on the back side, front quiff
+    "long": "M -74 -196 Q -86 -348 2 -350 Q 78 -348 72 -268 Q 58 -306 24 -312 Q -10 -316 -36 -300 "
+            "Q -54 -284 -56 -196 Z",                                        # straight, to the shoulder at the back
 }
-HAIR_LINES = {"spiky": "M -44 -318 L -36 -304 M -8 -334 L -2 -316 M 30 -330 L 34 -314 M 58 -316 L 56 -302"}
+HAIR_LINES = {"spiky": "M -44 -318 L -36 -304 M -8 -334 L -2 -316 M 30 -330 L 34 -314 M 58 -316 L 56 -302",
+              "side_part": "M -14 -336 Q 14 -346 44 -334",
+              "long": "M -66 -280 L -66 -212"}
 HEAD_PATH = ("M 2 -334 C 50 -334 66 -300 66 -258 C 66 -214 42 -190 2 -190 C -38 -190 -62 -214 -62 -258 "
              "C -62 -300 -46 -334 2 -334 Z")
 HAIR_TOP = {"spiky": -366, "tuft": -346, "neat": -340, "short": -338, "bob": -346, "topknot": -374, "bun": -366,
-            "messy": -346, "cap_short": -336, "non_la": -430}
+            "messy": -346, "cap_short": -336, "non_la": -412,
+            "low_bun": -346, "side_part": -358, "long": -350}
 # legacy hair names used by older scene code
 HAIR_ALIAS = {"bowl": "tuft", "bowl_grey": "neat", "ponytail_bow": "bob"}
 
@@ -146,8 +158,7 @@ _KID = dict(kind="kid", k=1.15, legs=1.0, torso=1.0, width=1.0, skin=SKIN, eye_s
 # adults use the engine's own proportions too (legs 1, torso 1, width 1); height comes from k only
 _ADULT = dict(kind="adult", k=2.3, legs=1.0, torso=1.0, width=1.0, skin=SKIN, eye_scale=1.0, bottom="pants",
               neck=None, shoes=INK, pants=P.PANTS_DARK)
-# engine `mot` / `mot2` (Mọt): spiky navy hair, blue polo with a lanyard. Every adult without an engine
-# design of their own (MOM, DAD, TEACHER, VENDOR) is drawn as Mọt, scaled uniformly (k 2.3 ~ 330 px).
+# engine `mot` / `mot2` (Mọt): spiky navy hair, blue polo with a lanyard (k 2.3 ~ 354 px).
 _POLO, _POLO_RED = _hex("#1E4FC2"), _hex("#E03A3E")
 _MOT = dict(_ADULT, hair="spiky", hair_color=_hex("#263859"), shirt=_POLO, polo=True, neck="lanyard",
             expr="neutral", legacy=(62, 85, 89, 105))
@@ -170,11 +181,25 @@ SPECS = {
                 legacy=(40, 46, 54, 58)),                                   # engine `em` (recolourable)
     "HIS_KID": dict(_KID, k=1.45, hair="short", hair_color=_hex("#3A2A1F"), shirt=_hex("#E07A5F"), expr="bored",
                     legacy=(47, 58, 68, 73)),                               # engine `anh`, scaled 1.15 -> 1.45
-    # adults with no engine design of their own: Mọt (engine `mot` / `mot2`) -------------------------
-    "MOM": dict(_MOT),
-    "DAD": dict(_MOT),
-    "TEACHER": dict(_MOT),
-    "VENDOR": dict(_MOT, expr="happy"),
+    # adults with no engine design of their own: new designs built only from engine parts --------------
+    # (egg head, engine eyes/brows/mouths, tunic shirt, stick limbs). They differ by hair path, colours and
+    # one engine-style piece each; proportions are the engine's (legs 1, torso 1, width 1), only k varies.
+    # Mẹ: hair swept back into a low bun at the nape, muted red blouse, nothing at the neck.
+    "MOM": dict(_ADULT, k=2.4, hair="low_bun", hair_color=_hex("#2A201B"), shirt=_hex("#C4553F"), expr="neutral",
+                legacy=(62, 85, 89, 105)),
+    # Bố: short side-parted hair with a front quiff, white short-sleeved shirt with a collar and a pen in the
+    # breast pocket (sleeves/collar = the engine polo pieces without the white trim and logo).
+    "DAD": dict(_ADULT, k=2.45, hair="side_part", hair_color=_hex("#1F1C1A"), shirt=_hex("#EEF1F2"), sleeves=True,
+                collar=True, pocket_pen=True, expr="neutral", legacy=(62, 85, 89, 105)),
+    # Cô giáo: long straight hair falling to the shoulder at the back, thin ink glasses, light-blue áo dài
+    # (the engine tunic with long panels).
+    "TEACHER": dict(_ADULT, k=2.4, hair="long", hair_color=_hex("#1E1A1C"), shirt=_hex("#A7C7E7"), bottom="aodai",
+                    glasses=True, expr="neutral", legacy=(62, 85, 89, 105)),
+    # Cô bán hàng rong: nón lá over hair tied in a low bun (bun shows under the brim), plain olive-green blouse (carries the gánh in draw_vendor).
+    "VENDOR": dict(_ADULT, k=2.35, hair="low_bun", hat="non_la", hair_color=_hex("#2A201B"),
+                   shirt=_hex("#7C8B52"), expr="happy", legacy=(62, 85, 89, 105)),
+    # Mọt (engine `mot`), kept for reference / cameo use
+    "MOT": dict(_MOT),
 }
 # script speaker name -> spec key
 SPEAKER_TO_CHAR = {"MUI": "MUI", "OLD MUI": "OLD_MUI", "HAI": "HAI", "TUN": "TUN", "TI": "TI", "MOM": "MOM",
@@ -393,13 +418,14 @@ def draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=0.0, f
             for side in (-1, 1):
                 sh, e, h = arms[side]
                 cv.line([sh, e, h], s.get("arm_color", INK), 7)
-            if s.get("polo"):             # engine: short sleeves along the upper arm, white trim at the hem
+            if s.get("polo") or s.get("sleeves"):   # engine: short sleeves along the upper arm (polo: white trim)
                 for side in (-1, 1):
                     sh, e, _h = arms[side]
                     ua = math.degrees(math.atan2(e[1] - sh[1], e[0] - sh[0]))
                     with cv.at(sh[0], sh[1], 1, rot=ua):
                         cv.poly([(-4, -10), (25, -9), (25, 9), (-4, 10)], fill=s["shirt"], outline=None)
-                        cv.line([(20, -8), (20, 8)], WHITE, 3)
+                        if s.get("polo"):
+                            cv.line([(20, -8), (20, 8)], WHITE, 3)
                         cv.line([(-1, -10), (25, -9), (25, 9), (-1, 10)], INK, 4.5)
             for side in (-1, 1):
                 h = arms[side][2]
@@ -525,6 +551,14 @@ def _draw_torso(cv, s, g):
         cv.line([(-18, -189), (-10, -174)], WHITE, 2.5)
         cv.line([(18, -189), (10, -174)], WHITE, 2.5)
         cv.rect(-18, -168, -8, -161, fill=_POLO_RED, ow=2.5, radius=1.5)
+    if s.get("collar") and not s.get("polo"):   # plain shirt collar: the engine polo flaps without the trim
+        for fl in (((-22, -192), (-1, -191), (-10, -170)), ((1, -191), (22, -192), (10, -170))):
+            cv.poly(list(fl), fill=shirt, ow=4)
+    if s.get("pocket_pen"):               # breast pocket with a pen clipped in it (same 2.5-4 ink strokes)
+        pen = s.get("pen_color", _hex("#1E4FC2")) if _lum(s["skin"]) > 90 else shirt
+        cv.line([(-12, -150), (-12, -164)], INK, 7)
+        cv.line([(-12, -150), (-12, -164)], pen, 3.5)
+        cv.rect(-21, -152, -4, -136, fill=shirt, ow=3, radius=1.5)
     if neck == "lanyard":                 # engine: navy strap with a red stripe, white ID card
         with cv.at(4, -188):
             for side in (-1, 1):
@@ -554,6 +588,8 @@ def _draw_head(cv, s, expr, mouth_open, look, blink, t, props):
         cv.circle(0, -352, 21, fill=hc, ow=6)
     if hair == "bun":
         cv.circle(-46, -334, 25, fill=hc, ow=6)
+    if hair == "low_bun":                  # bun at the nape, behind the head (like the engine topknot)
+        cv.circle(-72, -236, 24, fill=hc, ow=6)
     if "wig" in hp:
         _hp_wig_back(cv, s)
     _draw_path(cv, HEAD_PATH, fill=skin, ow=6)
@@ -580,7 +616,7 @@ def _draw_head(cv, s, expr, mouth_open, look, blink, t, props):
         HEAD_PROPS[hat](cv, s, t)
     top = min(HAIR_TOP.get(hair, -340), -334)
     if hat == "non_la" or "non_la" in props:
-        top = -430
+        top = -412
     elif hat or any(p in HEAD_PROPS for p in props):
         top = min(top, -372)
     return {"head": (2, -262), "mouth": (MO[0], MO[1] + 2), "top": (2, top)}
@@ -797,10 +833,10 @@ def _hp_crown(cv, s, t):
 
 def _hp_non_la(cv, s, t):
     """Conical hat (nón lá)."""
-    cv.poly([(2, -432)] + bezier((118, -290), (2, -276), (-114, -290), 10), fill=(238, 214, 156), ow=6)
+    cv.poly([(2, -412)] + bezier((112, -298), (2, -284), (-108, -298), 10), fill=(238, 214, 156), ow=6)
     for k in (0.4, 0.68):
-        y0 = -432 + 142 * k
-        cv.line([(2 - 116 * k, y0), (2 + 116 * k, y0)], (190, 160, 100), 3)
+        y0 = -412 + 114 * k
+        cv.line([(2 - 110 * k, y0), (2 + 110 * k, y0)], (190, 160, 100), 3)
 
 
 HEAD_PROPS = {"notebook_hat": _hp_notebook_hat, "wig": _hp_wig, "police_cap": _hp_police_cap,
@@ -933,7 +969,7 @@ def draw_dog(cv, x, y, scale=1.0, flip=False, pose="stand", t=0.0, color=(222, 1
 
 # ------------------------------------------------------------------ vendor extras
 def draw_vendor(cv, x, y, scale=1.0, flip=False, t=0.0, walking=True, steam=True):
-    """Street vendor (drawn as Mọt, the engine `mot` design) carrying a gánh (shoulder pole with two baskets)."""
+    """Street vendor (VENDOR: nón lá, olive blouse) carrying a gánh (shoulder pole with two baskets)."""
     pose = "walk_carry" if walking else "carry"
     a = draw_character(cv, "VENDOR", x, y, scale, pose=pose, t=t, flip=flip)
     g = _geom(char_spec("VENDOR"))

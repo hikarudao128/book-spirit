@@ -1,13 +1,15 @@
 # Video pipeline: *Give Me a Ticket to Childhood*
 
 This folder builds a flat-2D animated explainer in the OverSimplified style from
-`../kich-ban/cho-toi-xin-mot-ve-di-tuoi-tho.md`. It uses Pillow for drawing, Piper for offline
-TTS and ffmpeg for encoding. Output is 1280x720 at 24 fps.
+`../kich-ban/cho-toi-xin-mot-ve-di-tuoi-tho.md`. It uses Pillow for drawing, Microsoft Edge neural TTS
+(`edge-tts`, needs network; offline Piper is the fallback) and ffmpeg for encoding. Output is 1280x720 at 24 fps.
 
 ## Pipeline
 
 ```bash
-python3 video/audio/build_audio.py      # TTS -> build/audio/<line_id>.wav + manifest.json (cached)
+python3 video/audio/build_audio_edge.py # Edge TTS -> build/audio/<line_id>.wav + manifest.json (cached, real word timings)
+python3 video/audio/build_audio_edge.py --samples   # + build/audio/samples.mp3: one line per speaker, to audition casting
+python3 video/audio/build_audio.py      # fallback: offline Piper, same outputs but estimated word timings
 python3 video/timeline.py               # -> build/timeline.json (per-scene line start/end)
 python3 video/render.py --scene 1       # -> build/scenes/scene01.mp4 (video) + scene01_av.mp4 (with audio)
 python3 video/render.py --scene 1 --still 4.6,14,20.5   # PNGs for visual QA -> build/stills/
@@ -21,16 +23,18 @@ python3 video/thumbnail.py               # -> out/thumbnail.png
 | File | What it is |
 |------|------------|
 | `script_lines.json` | Every spoken line in order: `id`, `scene`, `speaker`, `text` (shown/faithful), `pause_after`; optional `tts_text` (pronunciation workaround), `length_scale` (per-line speed), `role` ("AS MOM" …) |
-| `audio/voices.json` | Voice casting (Piper model, pitch factor, speed), the pronunciation map (`Mui`→`Mooey` …) and loudness targets |
+| `audio/voices.json` | Voice casting. `edge` section (default): Edge voice, `rate` (%), `pitch` (Hz) per speaker, group `layers`, per-line overrides (`edge.lines`), pause tightening, pronunciation map (`Mui`→`Mooey` …), loudness targets. Top-level `voices` = Piper fallback casting |
 | `timeline_config.json` | Per-scene `lead_in` / `tail`, and `line_gap_before` (extra silent holds for visual gags) |
-| `build/audio/manifest.json` | Each line's `duration`, `peak`, `rms` and `envelope` (mouth RMS per video frame) |
+| `build/audio/manifest.json` | Each line's `duration`, `peak`, `rms`, `envelope` (mouth RMS per video frame) and, from Edge TTS, `words` = `[[word, start, end]]` (seconds from line start, one per `text.split()` word) |
 | `build/timeline.json` | `scenes["N"] = {duration, offset, lines:[{id,index,speaker,role,text,start,end,duration}]}` |
 
 To change timing, edit `pause_after` in `script_lines.json` or `timeline_config.json`, then re-run
 `timeline.py`; there is no need to rebuild the audio. Editing a line's text or voice needs
-`build_audio.py`, which only re-synthesizes lines whose content changed.
+`build_audio_edge.py`, which only re-synthesizes lines whose content changed (cache: `build/audio/_edge/`,
+keyed by voice, rate, pitch and TTS text). A line's `length_scale` scales its speaking rate (1.18 = slower).
+Inside the cloud sandbox the script points certifi at the proxy CA (`/root/.ccr/ca-bundle.crt`) itself.
 
-Voices are read from `$PIPER_VOICES_DIR`. The default is the session scratchpad `tts/voices`.
+Piper fallback voices are read from `$PIPER_VOICES_DIR`. The default is the session scratchpad `tts/voices`.
 
 ## Scene API
 
@@ -55,8 +59,8 @@ render in parallel across processes. Use seeded randomness only.
 | `ctx.current(t)` | the line being spoken at `t`, or None |
 | `ctx.speaking("MUI", t)` | bool. Speakers use script names: `"OLD MUI"`, `"HIS KID"`, `"THE WHOLE CLASS"` … |
 | `ctx.mouth("MUI", t)` | 0..1 mouth openness from the line's audio envelope; pass it as `mouth_open=`. Kids also flap during `THE WHOLE CLASS` lines. |
-| `ctx.words(id)` | `[(word, start, end)]`, *estimated* word timings (character-weighted, pauses at punctuation) |
-| `ctx.find_word(id, "Kites")` | estimated start time of the first word containing that text |
+| `ctx.words(id)` | `[(word, start, end)]` per word of the line's `text`: real TTS word marks (Edge build); estimated (character-weighted) with the Piper fallback |
+| `ctx.find_word(id, "Kites")` | start time of the first word containing that text |
 | `line.progress(t)`, `line.active(t)` | helpers |
 
 Cue dicts for `audio_cues`: `{"sfx": name, "start": s, "gain": 0.3, "dur": s, "fade_out": s}`. The names are
