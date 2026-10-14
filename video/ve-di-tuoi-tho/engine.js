@@ -48,7 +48,7 @@
     'khoanh-tay':    { L: { e: [-36, -150], h: [22, -160], s: 'nam' }, R: { e: [36, -148], h: [-18, -152], s: 'nam' } },
     'chi-nguoi-xem': { L: { e: [-34, -142], h: [-36, -104], s: 'nam' }, R: { e: [62, -178], h: [110, -188], s: 'chi' } },
     'an-mung':       { L: { e: [-52, -216], h: [-60, -266], s: 'nam' }, R: { e: [52, -216], h: [60, -266], s: 'nam' } },
-    'cam-sach':      { L: { e: [-8, -150], h: [22, -176], s: 'nam' }, R: { e: [50, -146], h: [92, -176], s: 'nam' } },
+    'cam-sach':      { L: { e: [-14, -142], h: [18, -162], s: 'nam' }, R: { e: [52, -150], h: [94, -162], s: 'nam' } },
   };
   // Tay biểu diễn bằng góc + độ dài (vai → khuỷu, khuỷu → bàn tay) để nội suy theo cung, không co rút.
   function toPolar(side, p) {
@@ -116,16 +116,8 @@
       default: return `<path d="M ${x - 8} ${y} L ${x + 8} ${y}" fill="none" ${st}/>`;
     }
   }
-  function handSVG(shape) {
-    const f = `fill="${SKIN}" stroke="${INK}" stroke-width="4"`;
-    const finger = (rot) => `<rect x="4" y="-4" width="22" height="8" rx="4" ${f} transform="rotate(${rot})"/>`;
-    switch (shape) {
-      case 'chi': return finger(0) + `<circle r="10" ${f}/>`;
-      case 'v': return finger(-22) + finger(22) + `<circle r="10" ${f}/>`;
-      case 'xoe': return `<rect x="2" y="-4" width="14" height="8" rx="4" ${f} transform="rotate(-75)"/><circle r="12" ${f}/>`;
-      case 'ok': return finger(-40) + `<circle r="11" ${f}/><circle cx="2" cy="1" r="4" fill="#FFFFFF" stroke="${INK}" stroke-width="3"/>`;
-      default: return `<circle r="11" ${f}/>`;
-    }
+  function handSVG() {                // bàn tay tròn, không vẽ ngón; các kiểu chi/v/ok/xoe chỉ còn khác ở vị trí tay
+    return `<circle r="11" fill="${SKIN}" stroke="${INK}" stroke-width="4"/>`;
   }
   const FX_SVG = {
     'zzz': `<text x="70" y="-372" font-family="Baloo 2" font-weight="800" font-size="46" fill="${INK}">Z<tspan font-size="36" dy="-22">z</tspan><tspan font-size="28" dy="-18">z</tspan></text>`,
@@ -200,7 +192,7 @@
       mk('path', { d: 'M -28 -192 L 28 -192 L 6 -150 L 0 -138 L -6 -150 Z', fill: '#D62828', stroke: INK, 'stroke-width': 4, 'stroke-linejoin': 'round' }, upper);
     }
     const book = mk('g', { display: 'none' }, upper);
-    book.innerHTML = `<path d="M 56 -150 L 18 -170 L 18 -226 L 56 -206 Z" fill="#FFFFFF" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M 56 -150 L 94 -170 L 94 -226 L 56 -206 Z" fill="#F4F6F8" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M 28 -196 L 48 -186 M 28 -184 L 48 -174 M 66 -186 L 86 -196 M 66 -174 L 86 -184" stroke="#9AA6B5" stroke-width="3"/>`;
+    book.innerHTML = `<path d="M 56 -114 L 18 -134 L 18 -190 L 56 -170 Z" fill="#FFFFFF" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M 56 -114 L 94 -134 L 94 -190 L 56 -170 Z" fill="#F4F6F8" stroke="${INK}" stroke-width="5" stroke-linejoin="round"/><path d="M 28 -160 L 48 -150 M 28 -148 L 48 -138 M 66 -150 L 86 -160 M 66 -138 L 86 -148" stroke="#9AA6B5" stroke-width="3"/>`;
     const head = mk('g', {}, upper);
     mk('rect', { x: -60, y: -332, width: 124, height: 140, rx: 26, fill: SKIN, stroke: INK, 'stroke-width': 6 }, head);
     mk('path', { d: HAIR[d.hair], fill: d.hairC, stroke: INK, 'stroke-width': 6, 'stroke-linejoin': 'round' }, head);
@@ -218,6 +210,7 @@
         return sg;
       });
     }
+    upper.appendChild(book);               // sách nằm trên tay áo, dưới bàn tay: hai tay cầm hai mép bìa
     const handL = mk('g', {}, upper), handR = mk('g', {}, upper);
     const fxg = mk('g', {}, L.fx);
     const r = rng(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
