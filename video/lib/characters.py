@@ -1,4 +1,8 @@
-"""Procedural cartoon characters (flat colours, thick INK outlines, big heads).
+"""Stick-figure characters ("người que"), drawn exactly like the project's SVG engine
+(darwin branch: video/ve-di-tuoi-tho/engine.js): egg-shaped head, solid oval eyes with thick
+expressive brows, a small tunic-shaped shirt, thick ink stick limbs, round hands without fingers
+and oval ink shoes. All body shapes are the engine's SVG paths, drawn in the engine's units
+(head ≈ 144 units tall, shoulders at y=-180, ground at y=0) and scaled to pixels by K = k * F.
 
 Main entry point:
 
@@ -7,80 +11,201 @@ Main entry point:
                              blink=None, outfit=None, nod=0.0, lean=0.0)
 
 (x, y) is the point between the feet on the ground (for pose="sit*": the seat
-point under the bottom; feet hang ~0.9*leg below it).
-Returns anchors in the caller's coordinate frame:
+point under the bottom; feet hang below it).
+Returns anchors in screen coordinates (same as cv.to_screen):
     {"head": (x,y), "head_r": r, "mouth": (x,y), "hand_r": (x,y), "hand_l": (x,y),
-     "top": (x,y) top of head/hair, "chest": (x,y), "feet": (x,y)}
-so scenes can attach speech bubbles, custom props, kite strings, labels...
+     "top": (x,y) top of head/hair, "chest": (x,y), "feet": (x,y),
+     "shoulder": (x,y) (extra: centre between the shoulders)}
+
+Facing: the face is drawn in 3/4 view looking right (engine default). flip=True mirrors the whole
+figure. The face also turns toward `look` when |look[0]| >= 0.25, so a character told to look
+left faces left even without flip.
 
 Names: MUI, OLD_MUI, HAI, TUN, TI, MOM, DAD, TEACHER, HIS_KID, VENDOR, KID (generic
-classmate; pass outfit/hair via `variant`), plus draw_dog(...) for DOG.
+classmate; pass hair/colours via `variant` / `colors`), plus draw_dog(...) for DOG.
 """
 import math
+import re
 import zlib
+from functools import lru_cache
 
 from . import palette as P
-from .core import INK, OW, bezier, clamp, ellipse_pts, lerp
+from .core import INK, bezier, clamp, ellipse_pts
+
+# ------------------------------------------------------------------ engine constants
+F = 0.42                         # px per engine unit at k = 1 (MUI, k = 1.25, is ~178 px tall)
+SKIN = (251, 227, 214)           # engine SKIN #FBE3D6
+MOUTH_RED = (209, 73, 91)        # engine RED  #D1495B
+WHITE = (255, 255, 255)
+
+
+def _hex(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def shade(c, k):
+    """engine shade(): k < 1 darker, k > 1 lighter."""
+    if k < 1:
+        return tuple(int(round(clamp(v * k, 0, 255))) for v in c)
+    return tuple(int(round(clamp(v + (255 - v) * (k - 1) * 0.35, 0, 255))) for v in c)
+
+
+# engine HAIR paths (verbatim) + a few new ones in the same construction
+HAIR = {
+    "spiky": "M -68 -270 L -76 -318 L -62 -322 L -56 -352 L -34 -336 L -16 -366 L 4 -340 L 26 -364 L 40 -338 "
+             "L 62 -350 L 66 -324 L 78 -304 L 70 -268 Q 40 -298 0 -296 Q -40 -298 -68 -270 Z",
+    "tuft": "M -66 -278 Q -68 -332 -16 -340 Q 34 -346 66 -310 L 68 -282 Q 30 -302 -66 -278 Z "
+            "M -14 -338 L -24 -374 L 0 -346 L 8 -380 L 20 -342 Z",
+    "neat": "M -66 -280 Q -66 -338 0 -340 Q 66 -340 68 -288 Q 24 -314 -16 -302 Q -42 -296 -66 -280 Z",
+    "short": "M -64 -288 Q -62 -336 0 -338 Q 64 -336 66 -290 Q 0 -312 -64 -288 Z",
+    "bob": "M -72 -228 Q -80 -344 0 -346 Q 80 -344 74 -228 L 60 -228 Q 62 -298 30 -300 Q 0 -296 -40 -306 "
+           "Q -58 -298 -58 -228 Z",
+    "topknot": "M -64 -284 Q -60 -336 0 -338 Q 62 -336 66 -286 Q 0 -308 -64 -284 Z",
+    # new, same style
+    "bun": "M -68 -238 Q -76 -340 0 -342 Q 68 -340 68 -284 Q 30 -306 -8 -300 Q -44 -294 -54 -238 Z",
+    "messy": "M -66 -262 L -72 -300 Q -66 -344 -6 -346 Q 52 -348 72 -306 L 74 -268 L 60 -290 L 54 -270 "
+             "L 40 -296 L 24 -282 L 14 -302 Q -28 -300 -52 -282 Z",
+    "cap_short": "M -62 -282 Q -60 -334 0 -336 Q 62 -334 64 -284 Q 0 -300 -62 -282 Z",   # under a hat
+}
+HAIR_LINES = {"spiky": "M -44 -318 L -36 -304 M -8 -334 L -2 -316 M 30 -330 L 34 -314 M 58 -316 L 56 -302"}
+HEAD_PATH = ("M 2 -334 C 50 -334 66 -300 66 -258 C 66 -214 42 -190 2 -190 C -38 -190 -62 -214 -62 -258 "
+             "C -62 -300 -46 -334 2 -334 Z")
+HAIR_TOP = {"spiky": -366, "tuft": -346, "neat": -340, "short": -338, "bob": -346, "topknot": -374, "bun": -366,
+            "messy": -346, "cap_short": -336, "non_la": -430}
+# legacy hair names used by older scene code
+HAIR_ALIAS = {"bowl": "tuft", "bowl_grey": "neat", "ponytail_bow": "bob"}
+
+E1, E2, MO = (6, -256), (36, -256), (24, -220)   # far eye, near eye, mouth (engine)
+SH_X, SH_Y = 24, -180                           # shoulders (engine)
+
+
+@lru_cache(maxsize=None)
+def _path(d, n=10):
+    """Tiny SVG path parser (absolute M/L/Q/C/Z) -> tuple of subpaths (tuples of points)."""
+    toks = re.findall(r"[MLQCZ]|-?\d+(?:\.\d+)?", d)
+    subs, cur, i, cmd, pos = [], [], 0, None, (0.0, 0.0)
+
+    def num():
+        nonlocal i
+        v = float(toks[i])
+        i += 1
+        return v
+    while i < len(toks):
+        tk = toks[i]
+        if tk in "MLQCZ":
+            cmd = tk
+            i += 1
+            if cmd == "Z":
+                if cur:
+                    subs.append(tuple(cur))
+                cur = []
+                continue
+        if cmd == "M":
+            if cur:
+                subs.append(tuple(cur))
+            pos = (num(), num())
+            cur = [pos]
+            cmd = "L"
+        elif cmd == "L":
+            pos = (num(), num())
+            cur.append(pos)
+        elif cmd == "Q":
+            c1 = (num(), num())
+            p2 = (num(), num())
+            cur += bezier(pos, c1, p2, n)[1:]
+            pos = p2
+        elif cmd == "C":
+            c1, c2, p3 = (num(), num()), (num(), num()), (num(), num())
+            for k in range(1, n + 1):
+                u = k / n
+                a, b, c, e = (1 - u) ** 3, 3 * (1 - u) ** 2 * u, 3 * (1 - u) * u * u, u ** 3
+                cur.append((a * pos[0] + b * c1[0] + c * c2[0] + e * p3[0],
+                            a * pos[1] + b * c1[1] + c * c2[1] + e * p3[1]))
+            pos = p3
+    if cur:
+        subs.append(tuple(cur))
+    return tuple(subs)
+
+
+def _draw_path(cv, d, fill=None, ow=6, outline=INK, dx=0.0, dy=0.0):
+    for sp in _path(d):
+        pts = [(x + dx, y + dy) for x, y in sp] if (dx or dy) else sp
+        cv.poly(pts, fill=fill, outline=outline, ow=ow)
+
+
+def _q(cv, p0, p1, p2, width, col=INK):
+    cv.line(bezier(p0, p1, p2, 10), col, width)
+
 
 # ------------------------------------------------------------------ specs
-_KID = dict(kind="kid", head_r=40, leg=46, torso_h=54, torso_w=58, arm_w=13, leg_w=15, hand_r=8,
-            skin=P.SKIN, hair_color=P.HAIR, eye_scale=1.0, cheeks=True, shoes=P.SANDAL, neck=0.0)
-_ADULT = dict(kind="adult", head_r=54, leg=170, torso_h=150, torso_w=104, arm_w=22, leg_w=28, hand_r=12,
-              skin=P.SKIN_ADULT, hair_color=P.HAIR, eye_scale=0.9, cheeks=False, shoes=P.PANTS_DARK, neck=10)
+# k: engine scale; legs/torso: length factors (engine haico has legs 1.75); width: shirt width factor.
+_KID = dict(kind="kid", k=1.15, legs=1.0, torso=1.0, width=1.0, skin=SKIN, eye_scale=1.0, bottom="shorts",
+            neck=None, shoes=INK, pants=P.NAVY)
+_ADULT = dict(kind="adult", k=1.8, legs=2.3, torso=1.85, width=1.15, skin=SKIN, eye_scale=1.0, bottom="pants",
+              neck=None, shoes=INK, pants=P.PANTS_DARK)
 
 SPECS = {
-    "MUI": dict(_KID, hair="bowl", shirt=P.SHIRT_BLUE, bottom="shorts", pants=P.NAVY, expr="bored"),
-    "HAI": dict(_KID, hair="spiky", head_r=37, leg=84, torso_h=60, torso_w=44, arm_w=11, leg_w=12,
-                shirt=P.SHIRT_GREEN, stripes=True, bottom="shorts", pants=(196, 140, 80), expr="smug",
-                bandaid=True),
-    "TUN": dict(_KID, hair="bob", eye_scale=1.45, shirt=P.DRESS_YELLOW, bottom="dress", expr="happy",
-                hair_color=(64, 40, 30)),
-    "TI": dict(_KID, hair="ponytail_bow", head_r=39, shirt=P.DRESS_PINK, bottom="dress", expr="happy",
-               missing_teeth=True),
-    "KID": dict(_KID, hair="short", shirt=P.SHIRT_WHITE, bottom="shorts", pants=P.NAVY, expr="neutral"),
-    "MOM": dict(_ADULT, hair="bun", shirt=P.MOM_TOP, bottom="pants", pants=P.PANTS_DARK, expr="neutral",
-                lips=True),
-    "DAD": dict(_ADULT, hair="short", head_r=56, shirt=P.DAD_SHIRT, bottom="pants", pants=(64, 74, 96),
-                expr="neutral", glasses=True, torso_w=112),
-    "TEACHER": dict(_ADULT, hair="bun", shirt=P.AODAI, bottom="aodai", pants=P.WHITE, expr="neutral",
-                    glasses=True, lips=True),
-    "OLD_MUI": dict(_ADULT, hair="bowl_grey", head_r=57, shirt=(214, 196, 150), bottom="pants",
-                    pants=(90, 84, 80), expr="bored", mustache=True, belly=True, hair_color=(70, 66, 70),
-                    torso_w=118),
-    "HIS_KID": dict(_KID, kind="teen", hair="messy", head_r=38, leg=96, torso_h=92, torso_w=70, arm_w=15,
-                    leg_w=18, hand_r=9, shirt=P.HOODIE, bottom="pants", pants=(60, 70, 100), expr="bored",
-                    cheeks=False, eye_scale=0.95, shoes=(240, 240, 240), neck=4, hood=True),
-    "VENDOR": dict(_ADULT, hair="non_la", shirt=(120, 160, 120), bottom="pants", pants=(60, 56, 64),
-                   expr="happy", leg=150, torso_h=135, torso_w=96),
+    # engine cast (CHARS) -------------------------------------------------------------
+    "MUI": dict(_KID, k=1.25, hair="tuft", hair_color=_hex("#4A3426"), shirt=_hex("#F4C542"), expr="bored",
+                legacy=(40, 46, 54, 58)),                                   # engine `mui`
+    "HAI": dict(_KID, k=1.22, legs=1.75, hair="short", hair_color=_hex("#2B2B2B"), shirt=_hex("#A8754E"),
+                expr="smug", bandaid=True, legacy=(37, 84, 60, 44)),        # engine `haico`
+    "TI": dict(_KID, k=1.18, hair="bob", hair_color=_hex("#3B2A20"), shirt=_hex("#F28DB2"), expr="happy",
+               missing_teeth=True, bow=True, legacy=(39, 46, 54, 58)),   # engine `tisun`
+    "TUN": dict(_KID, k=1.06, hair="topknot", hair_color=_hex("#2B2B2B"), shirt=_hex("#B9A7E6"), expr="happy",
+                eye_scale=1.18, legacy=(40, 46, 54, 58)),   # engine `tun` (a bit taller)
+    "OLD_MUI": dict(_ADULT, k=1.85, legs=2.2, torso=1.9, hair="neat", hair_color=_hex("#4A3426"),
+                    shirt=_hex("#6C7A89"), neck="tie", tie_color=_hex("#2E3A59"), bags=True, grey_temples=True,
+                    belly=True, expr="bored", legacy=(57, 170, 150, 118)),  # engine `muilon`
+    "KID": dict(_KID, k=1.15, hair="short", hair_color=_hex("#3A2A1F"), shirt=_hex("#E07A5F"), expr="neutral",
+                legacy=(40, 46, 54, 58)),                                   # engine `anh` (recolourable)
+    # new cast in the same style ------------------------------------------------------------
+    "MOM": dict(_ADULT, k=1.8, legs=2.35, torso=1.85, hair="bun", hair_color=_hex("#2B2220"),
+                shirt=_hex("#C4464F"), expr="neutral", lips=True, legacy=(54, 170, 150, 104)),
+    "DAD": dict(_ADULT, k=1.95, legs=2.25, torso=1.9, width=1.22, hair="short", hair_color=_hex("#2B2B2B"),
+                shirt=_hex("#E9E6DC"), expr="neutral", glasses=True, legacy=(56, 170, 150, 112)),
+    "TEACHER": dict(_ADULT, k=1.8, legs=2.3, torso=1.85, hair="bun", hair_color=_hex("#2B2220"),
+                    shirt=_hex("#82BEE6"), bottom="aodai", expr="neutral", glasses=True, lips=True,
+                    legacy=(54, 170, 150, 104)),
+    "HIS_KID": dict(_KID, kind="teen", k=1.3, legs=1.9, torso=1.3, width=1.08, hair="messy",
+                    hair_color=_hex("#2B2B2B"), shirt=_hex("#C8463C"), bottom="pants", expr="bored", hood=True,
+                    legacy=(38, 96, 92, 70)),
+    "VENDOR": dict(_ADULT, k=1.75, legs=2.1, torso=1.8, hair="cap_short", hair_color=_hex("#2B2220"),
+                   shirt=_hex("#7FA77A"), expr="happy", hat="non_la", legacy=(54, 150, 135, 96)),
 }
 # script speaker name -> spec key
 SPEAKER_TO_CHAR = {"MUI": "MUI", "OLD MUI": "OLD_MUI", "HAI": "HAI", "TUN": "TUN", "TI": "TI", "MOM": "MOM",
                    "DAD": "DAD", "TEACHER": "TEACHER", "HIS KID": "HIS_KID"}
 
 OUTFITS = {
-    # name: overrides applied on top of spec
-    "uniform": dict(shirt=P.SHIRT_WHITE, pants=P.NAVY, scarf=True, stripes=False),
-    "police": dict(shirt=(70, 96, 150), pants=(50, 60, 90), stripes=False, hat="police_cap", badge=True),
-    "flight": dict(shirt=(40, 70, 140), stripes=False, hat="flight_cap", scarf_color=P.ACCENT, scarf=True),
-    "principal": dict(shirt=P.SHIRT_WHITE, pants=P.PANTS_DARK, tie=True, glasses=True, stripes=False),
-    "snow_white": dict(shirt=(60, 100, 200), skirt=(255, 220, 80), bottom="dress", bow_color=(220, 40, 50)),
+    # name: overrides applied on top of spec (small costume pieces on the stick figure)
+    "uniform": dict(shirt=(247, 247, 242), neck="scarf", scarf_color=_hex("#D62828")),
+    "police": dict(shirt=(70, 96, 154), neck=None, hat="police_cap", badge=True),
+    "flight": dict(shirt=(44, 76, 140), hat="flight_cap", neck="scarf", scarf_color=P.ACCENT),
+    "principal": dict(shirt=(247, 247, 242), neck="tie", tie_color=P.ACCENT, glasses=True),
+    "snow_white": dict(shirt=(60, 100, 200), skirt=(255, 220, 80), bottom="dress", bow=True,
+                       bow_color=(220, 40, 50)),
     "dad_role": dict(hat="notebook_hat"),
-    "work": dict(shirt=(200, 206, 214), pants=(60, 60, 70), tie=True, stripes=False),
+    "work": dict(shirt=(200, 206, 214), neck="tie", tie_color=_hex("#2E3A59")),
 }
 
+# expression -> (eyes, brows, resting mouth, talking mouth)   (engine eye/mouth names)
 EXPRESSIONS = {
-    #            lid   pupil  brow_dy brow_tilt mouth        eye_scale
-    "neutral":  (0.00, 1.0,   0.00,   0,        "flat",      1.0),
-    "bored":    (0.50, 1.0,   0.10,   0,        "flat_side", 1.0),
-    "deadpan":  (0.55, 0.9,   0.10,   0,        "flat",      1.0),
-    "happy":    (0.00, 1.0,  -0.08,   0,        "smile",     1.0),
-    "smug":     (0.38, 1.0,   0.00,  -1,        "smirk",     1.0),
-    "shocked":  (0.00, 0.55, -0.22,   0,        "O",         1.3),
-    "angry":    (0.22, 1.0,   0.08,   1,        "frown_flat", 1.0),
-    "sad":      (0.25, 1.0,   0.00,   2,        "frown",     1.0),
-    "scared":   (0.00, 0.6,  -0.12,   2,        "wavy",      1.2),
-    "proud":    (0.45, 1.0,  -0.06,   0,        "smile",     1.0),
+    "neutral": ("thuong", "thuong", "ngam", "talk"),
+    "bored":   ("half", "flat", "side", "talk"),
+    "deadpan": ("half", "flat", "ngam", "talk"),
+    "happy":   ("thuong", "cuoi", "cuoi", "smile"),
+    "smug":    ("luom", "luom", "mim", "talk"),
+    "shocked": ("tron", "tron", "o", "talk"),
+    "angry":   ("thuong", "angry", "frown", "talk"),
+    "sad":     ("thuong", "sad", "frown", "talk"),
+    "scared":  ("tron", "sad", "meo", "talk"),
+    "proud":   ("nham", "cuoi", "cuoi", "smile"),
 }
+
+# legacy scene keys -> new keys
+_KEY_ALIAS = {"hairC": "hair_color"}
 
 
 def char_spec(name, outfit=None, **overrides):
@@ -88,50 +213,81 @@ def char_spec(name, outfit=None, **overrides):
     s["name"] = name
     if outfit:
         s.update(OUTFITS[outfit])
-    s.update(overrides)
+        if outfit == "dad_role":
+            s["hat"] = "notebook_hat"
+    _apply_overrides(s, overrides)
+    s["hair"] = HAIR_ALIAS.get(s.get("hair"), s.get("hair"))
+    if s.get("hair") == "non_la":
+        s["hair"], s["hat"] = "cap_short", "non_la"
+    if s.get("tie") and not s.get("neck"):
+        s["neck"] = "tie"
+    if s.get("scarf") and not s.get("neck"):
+        s["neck"] = "scarf"
     return s
 
 
-# ------------------------------------------------------------------ helpers
-def _ik(sh, target, l1, l2, side, prefer="out"):
-    """Two-bone IK. Returns elbow point; elbow bends outward (prefer='out') or down ('down')."""
-    dx, dy = target[0] - sh[0], target[1] - sh[1]
-    d = math.hypot(dx, dy)
-    d = clamp(d, abs(l1 - l2) + 1e-3, l1 + l2 - 1e-3)
-    a = math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1))
-    base = math.atan2(dy, dx)
-    # choose the elbow solution that sits further outward
-    c1 = base + a
-    c2 = base - a
-    e1 = (sh[0] + l1 * math.cos(c1), sh[1] + l1 * math.sin(c1))
-    e2 = (sh[0] + l1 * math.cos(c2), sh[1] + l1 * math.sin(c2))
-    if prefer == "down":
-        return e1 if e1[1] > e2[1] else e2
-    return e1 if (e1[0] - e2[0]) * side > 0 else e2
+def _apply_overrides(s, ov):
+    """Applies variant/colors overrides; translates the old pixel geometry keys (head_r, leg,
+    torso_h, torso_w) into k/legs/torso/width relative to the spec's legacy proportions."""
+    ov = {_KEY_ALIAS.get(k, k): v for k, v in ov.items()}
+    geo = {k: ov.pop(k) for k in ("head_r", "leg", "torso_h", "torso_w") if k in ov}
+    if "hair" in ov and ov["hair"] == "ponytail_bow":
+        ov.setdefault("bow", True)
+    if ov.get("tie") is False and s.get("neck") == "tie":
+        s["neck"] = None
+    if ov.get("scarf") is False and s.get("neck") == "scarf":
+        s["neck"] = None
+    s.update(ov)
+    if geo:
+        hr0, leg0, th0, tw0 = s["legacy"]
+        k0 = s["k"]
+        k1 = k0 * geo.get("head_r", hr0) / hr0
+        s["k"] = k1
+        s["legs"] = s["legs"] * geo.get("leg", leg0) / leg0 * k0 / k1
+        s["torso"] = s["torso"] * geo.get("torso_h", th0) / th0 * k0 / k1
+        s["width"] = s["width"] * (geo.get("torso_w", tw0) / tw0) ** 0.5
+        if s["torso"] > 1.2 and s.get("kind") == "kid":
+            s["kind"] = "teen"
 
 
-def _dir(a, side):
-    r = math.radians(a)
-    return (side * math.sin(r), math.cos(r))
+def _geom(s, sitting=False):
+    lf, tf = s["legs"], s["torso"]
+    if sitting:
+        hip = -18.0
+    else:
+        hip = -(16 + 102 * lf)
+    hem = hip + 18
+    top = hem - 90 * tf
+    u = top + 190                 # shift applied to engine upper-body coordinates
+    return dict(hip=hip, hem=hem, top=top, u=u, K=s["k"] * F, lf=lf, tf=tf, wf=s["width"],
+                af=1.0 + (tf - 1.0) * 0.85)
 
 
-# pose -> per-arm (upper_angle, elbow_bend) measured from straight down, + = outward.
-# a value of "ik:<target>" uses IK to a named target.
-ARM_POSES = {
-    "stand": ((14, -6), (14, -6)),
-    "point": ((86, 4), (14, -6)),
-    "point_up": ((142, 14), (14, -6)),
-    "hands_hip": ((52, -118), (52, -118)),
-    "arms_up": ((155, 12), (155, 12)),
-    "shrug": ((58, 92), (58, 92)),
-    "hold": ((14, -100), (14, -6)),
-    "hold_both": ((14, -100), (14, -100)),
-    "present": ((70, 12), (70, 12)),
-    "cover_head": ("ik:head_top", "ik:head_top"),
-    "chin_on_hand": ("ik:chin", (14, -6)),
-    "salute": ("ik:brow", (14, -6)),
-    "fist_up": ((150, -70), (14, -6)),
-    "facepalm": ("ik:face", (14, -6)),
+# ------------------------------------------------------------------ poses (engine joint system)
+# per arm: ("a", elbow, hand) = arm-relative (scaled with arm length), ("h", elbow_hint, hand) = hand on
+# the head (absolute engine coords; elbow re-solved by IK when the arms are longer)
+_DUNG_L = ("a", (-34, -142), (-36, -104))
+_DUNG_R = ("a", (34, -142), (36, -104))
+POSES = {
+    "stand":        (_DUNG_L, _DUNG_R),                                         # dung
+    "wave":         (_DUNG_L, ("a", (50, -198), (58, -248))),                   # chao
+    "point_up":     (_DUNG_L, ("a", (52, -178), (60, -228))),                   # chi-len
+    "present":      (_DUNG_L, ("a", (58, -160), (98, -172))),                   # chia-tay
+    "shrug":        (("a", (-52, -156), (-74, -178)), ("a", (52, -156), (76, -178))),   # nhun-vai
+    "chin_on_hand": (("a", (-6, -146), (40, -150)), ("h", (46, -150), (30, -187))),     # chong-cam
+    "ok":           (_DUNG_L, ("a", (54, -168), (74, -210))),                   # ok
+    "cross_arms":   (("a", (-36, -150), (22, -160)), ("a", (36, -148), (-18, -152))),   # khoanh-tay
+    "point":        (_DUNG_L, ("a", (62, -178), (110, -188))),                  # chi-nguoi-xem
+    "arms_up":      (("a", (-52, -216), (-60, -266)), ("a", (52, -216), (60, -266))),   # an-mung
+    "hold_both":    (("a", (-14, -142), (18, -162)), ("a", (52, -150), (94, -162))),    # cam-sach
+    # invented in the same joint system
+    "hands_hip":    (("a", (-60, -150), (-36, -116)), ("a", (60, -150), (36, -116))),
+    "hold":         (_DUNG_L, ("a", (42, -142), (62, -164))),
+    "cover_head":   (("h", (-82, -224), (-62, -298)), ("h", (88, -224), (68, -298))),
+    "salute":       (_DUNG_L, ("h", (86, -214), (62, -284))),
+    "fist_up":      (_DUNG_L, ("a", (50, -210), (56, -260))),
+    "facepalm":     (_DUNG_L, ("h", (66, -172), (30, -252))),
+    "carry":        (("a", (-46, -150), (-40, -186)), ("a", (46, -150), (40, -186))),   # hands on a shoulder pole
 }
 
 
@@ -140,6 +296,61 @@ def _pose_parts(pose):
     sitting = pose.startswith("sit")
     arm = pose[4:] if pose.startswith("sit_") else ("stand" if pose == "sit" else pose)
     return sitting, arm
+
+
+def _ik(sh, target, l1, l2, hint):
+    dx, dy = target[0] - sh[0], target[1] - sh[1]
+    d = clamp(math.hypot(dx, dy), abs(l1 - l2) + 1e-3, l1 + l2 - 1e-3)
+    a = math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1))
+    base = math.atan2(dy, dx)
+    cands = [(sh[0] + l1 * math.cos(base + sg * a), sh[1] + l1 * math.sin(base + sg * a)) for sg in (1, -1)]
+    return min(cands, key=lambda e: (e[0] - hint[0]) ** 2 + (e[1] - hint[1]) ** 2)
+
+
+def _rot(p, c, ang):
+    ca, sa = math.cos(ang), math.sin(ang)
+    x, y = p[0] - c[0], p[1] - c[1]
+    return (c[0] + x * ca - y * sa, c[1] + x * sa + y * ca)
+
+
+def _arms(g, arm_pose, pose, t):
+    """Returns {side: (shoulder, elbow, hand)} in engine upper-body coords (before the u shift)."""
+    af, wf = g["af"], g["wf"]
+    out = {}
+    walking = pose in ("walk", "run")
+    if pose == "walk_carry":
+        arm_pose = "carry"
+    for idx, side in enumerate((-1, 1)):
+        sh = (side * SH_X * wf, SH_Y)
+        sh0 = (side * SH_X, SH_Y)
+        if walking:
+            run = pose == "run"
+            ph = t * (2.2 if not run else 3.6) * 2 * math.pi + (math.pi if side > 0 else 0)
+            sw = math.sin(ph) * (0.3 if not run else 0.6)
+            if run:
+                e = (sh[0] + side * 12 * af, sh[1] + 34 * af)
+                h = (e[0] + side * 6 * af, e[1] - 30 * af)
+            else:
+                e = (sh[0] + side * 10 * af, sh[1] + 38 * af)
+                h = (e[0] + side * 2 * af, e[1] + 38 * af)
+            e, h = _rot(e, sh, sw), _rot(h, sh, sw)
+            out[side] = (sh, e, h)
+            continue
+        kind, e0, h0 = POSES.get(arm_pose, POSES["stand"])[idx]
+        if kind == "a":
+            e = (sh[0] + (e0[0] - sh0[0]) * af, sh[1] + (e0[1] - sh0[1]) * af)
+            h = (e[0] + (h0[0] - e0[0]) * af, e[1] + (h0[1] - e0[1]) * af)
+        else:
+            h = h0
+            if af == 1.0 and wf == 1.0:
+                e = e0
+            else:
+                L = 39 * af
+                e = _ik(sh, h, L, L, (e0[0] * wf, sh[1] + (e0[1] - SH_Y) * af))
+        if arm_pose == "wave" and side > 0:
+            h = _rot(h, e, math.radians(22) * math.sin(t * 9))
+        out[side] = (sh, e, h)
+    return out
 
 
 # ------------------------------------------------------------------ main
@@ -152,200 +363,362 @@ def draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=0.0, f
     expr = expression or s["expr"]
     if blink is None:
         blink = auto_blink(t, seed=zlib.crc32(name.encode()) % 97)
-    R = s["head_r"]
-    leg, th, tw = s["leg"], s["torso_h"], s["torso_w"]
     sitting, arm_pose = _pose_parts(pose)
-    walking = pose in ("walk", "run")
-    phase = t * (2.2 if pose == "walk" else 3.6) * 2 * math.pi
-
-    bob = 0.0
-    if walking:
-        bob = -abs(math.sin(phase)) * (4 if pose == "walk" else 9)
+    walking = pose in ("walk", "run", "walk_carry")
+    g = _geom(s, sitting)
+    K = g["K"]
     if pose == "run":
         lean = lean or 8
-    hip_y = (-leg if not sitting else 0.0) + bob
-    top = hip_y - th
-    head_cy = top - R * 0.80 - s.get("neck", 0) + nod
-    if s["kind"] == "adult":
-        head_cy = top - R * 0.92 - s.get("neck", 0) + nod
-
+    phase = t * (3.6 if pose == "run" else 2.2) * 2 * math.pi
+    bob = 0.0
+    if walking:
+        bob = -abs(math.sin(phase)) * (5 if pose == "walk" else 12)
+    u = g["u"] + bob
+    body_dir = -1 if flip else 1
+    lx, ly = look
+    face_dir = (1 if lx > 0 else -1) if abs(lx) >= 0.25 else body_dir
+    head_m = face_dir * body_dir          # +1: head drawn as in the engine, -1: mirrored
     out = {}
-    with cv.at(x, y, scale, flip=flip, rot=lean if not flip else -lean):
-        # ---------------- legs
-        hx = tw * 0.24
-        feet = []
-        for side in (-1, 1):
-            hip = (side * hx, hip_y)
-            if sitting:
-                knee = (side * (hx + tw * 0.2), hip_y + 4)
-                foot = (side * (hx + tw * 0.14), hip_y + leg * 0.9)
-                pts = [knee, foot]
-            elif walking:
-                ph = phase + (0 if side > 0 else math.pi)
-                lift = max(0.0, math.sin(ph)) * leg * (0.28 if pose == "walk" else 0.45)
-                foot = (side * hx + math.cos(ph) * (3 if pose == "walk" else 8), -lift)
-                pts = [hip, foot]
-            else:
-                foot = (side * (hx + 2), 0.0)
-                pts = [hip, foot]
-            feet.append(foot)
-            legcol = s["skin"] if s["bottom"] in ("shorts", "dress") else s["pants"]
-            if s["bottom"] == "aodai":
-                legcol = s["pants"]
-            cv.limb(pts, s["leg_w"], legcol)
-            # shoe
-            fx, fy = foot
-            cv.ellipse(fx + side * 5, fy - s["leg_w"] * 0.25, s["leg_w"] * 0.85, s["leg_w"] * 0.45, fill=s["shoes"])
-            if sitting:
-                cv.circle(knee[0], knee[1], s["leg_w"] * 0.7,
-                          fill=s["skin"] if s["bottom"] in ("shorts", "dress") else s["pants"])
-
-        # ---------------- torso / clothes
-        shirt = s["shirt"]
-        belly = s.get("belly", False)
-        if s["bottom"] == "shorts":
-            sh_y1 = hip_y + leg * 0.32 if not sitting else hip_y + 8
-            if sitting:   # thighs come toward the camera: wide, short shorts
-                cv.rect(-tw / 2 - tw * 0.16, hip_y - 14, tw / 2 + tw * 0.16, sh_y1, fill=s["pants"], radius=10)
-            else:
-                cv.rect(-tw / 2 + 2, hip_y - 14, tw / 2 - 2, sh_y1, fill=s["pants"], radius=6)
-            if not sitting:
-                cv.line([(0, hip_y - 4), (0, sh_y1 - 2)], INK, 2.5)
-        elif s["bottom"] == "pants":
-            cv.rect(-tw / 2 + 4, hip_y - 14, tw / 2 - 4, hip_y + 12, fill=s["pants"], radius=8)
-        if s["bottom"] == "dress":
-            skirt = s.get("skirt", shirt)
-            hem = hip_y + (leg * 0.42 if not sitting else 14)
-            cv.poly([(-tw * 0.42, top + th * 0.45), (tw * 0.42, top + th * 0.45), (tw * 0.68, hem),
-                     (-tw * 0.68, hem)], fill=skirt)
-            cv.rect(-tw / 2, top, tw / 2, top + th * 0.55, fill=shirt, radius=tw * 0.22)
-        elif s["bottom"] == "aodai":
-            hem = hip_y + (leg * 0.62 if not sitting else 20)
-            cv.poly([(-tw * 0.46, top + 10), (tw * 0.46, top + 10), (tw * 0.52, hem), (-tw * 0.52, hem)],
-                    fill=shirt)
-            cv.line([(-tw * 0.5, hip_y - 30), (-tw * 0.52, hem)], INK, 2.5)   # side slits
-            cv.line([(tw * 0.5, hip_y - 30), (tw * 0.52, hem)], INK, 2.5)
-            cv.rect(-tw / 2, top, tw / 2, hip_y - 20, fill=shirt, radius=tw * 0.25)
-            cv.ellipse(0, top + 6, tw * 0.16, 7, fill=shirt)   # mandarin collar
-        elif belly:
-            cv.rect(-tw / 2, top, tw / 2, hip_y + 4, fill=shirt, radius=tw * 0.3)
-            cv.ellipse(0, hip_y - th * 0.30, tw * 0.62, th * 0.42, fill=shirt)
-            cv.circle(0, hip_y - th * 0.26, 3, fill=INK, outline=None)   # belly button hint / button
-        elif s["kind"] == "adult":
-            cv.poly(_torso_pts(tw, top, hip_y + 8, 0.84, tw * 0.22), fill=shirt)
-        else:
-            cv.rect(-tw / 2, top, tw / 2, hip_y - (6 if s["bottom"] == "shorts" else -6), fill=shirt,
-                    radius=tw * 0.22)
-        if s.get("stripes"):
-            for k in range(1, 4):
-                yy = top + th * k / 4
-                cv.line([(-tw / 2 + 5, yy), (tw / 2 - 5, yy)], (80, 150, 80), 5, round_caps=False)
-        if s.get("hood"):
-            cv.ellipse(0, top + 4, tw * 0.38, 12, fill=tuple(int(c * 0.85) for c in shirt))
-            cv.line([(-8, top + 12), (-10, top + 40)], P.WHITE, 2.5)
-            cv.line([(8, top + 12), (10, top + 40)], P.WHITE, 2.5)
-        if s.get("tie"):
-            cv.poly([(-6, top + 6), (6, top + 6), (9, top + th * 0.6), (0, top + th * 0.7), (-9, top + th * 0.6)],
-                    fill=P.ACCENT, ow=2.5)
-        if s.get("scarf"):
-            sc = s.get("scarf_color", P.SCARF_RED)
-            cv.poly([(-tw * 0.36, top + 2), (tw * 0.36, top + 2), (0, top + th * 0.36)], fill=sc, ow=2.8)
-            cv.poly([(-4, top + 10), (4, top + 10), (12, top + th * 0.5), (-2, top + th * 0.42)], fill=sc, ow=2.5)
-        if s.get("badge"):
-            cv.circle(tw * 0.22, top + th * 0.3, 6, fill=P.GOLD, ow=2.2)
-
-        if s["kind"] != "kid":
-            cv.limb([(0, top + 6), (0, head_cy + R * 0.6)], R * 0.34, s["skin"])
-            if s.get("bottom") == "aodai":
-                cv.ellipse(0, top + 2, R * 0.3, 8, fill=shirt)
-        # ---------------- arms
-        arm_w, hr = s["arm_w"], s["hand_r"]
-        ua = th * (0.50 if s["kind"] != "adult" else 0.46)
-        fa = ua * 0.95
-        hands = {}
-        mouth_y = head_cy + R * 0.48
-        targets = {
-            "chin": (R * 0.12, head_cy + R * 0.98 + hr * 0.4),
-            "head_top": (R * 1.0, head_cy - R * 0.1),     # hands clutching the sides of the head
-            "brow": (R * 0.55, head_cy - R * 0.4),
-            "face": (R * 0.1, head_cy + R * 0.05),
-        }
-        for side, spec in ((1, None), (-1, None)):
-            if walking:
-                ph = phase + (math.pi if side > 0 else 0)
-                spec = (16 + 18 * math.sin(ph), -15 - 10 * max(0, math.sin(ph)))
-            else:
-                pa = ARM_POSES.get(arm_pose, ARM_POSES["stand"])
-                spec = pa[0] if side > 0 else pa[1]
-            sh = (side * (tw / 2 - arm_w * 0.55), top + arm_w * 0.75)
-            if arm_pose == "wave" and side > 0:
-                spec = (148 + 6 * math.sin(t * 9), -30 + 28 * math.sin(t * 9))
-            if isinstance(spec, str):
-                tgt = targets[spec.split(":")[1]]
-                tgt = (side * abs(tgt[0]), tgt[1]) if not spec.endswith("chin") else (tgt[0] * side, tgt[1])
-                elbow = _ik(sh, tgt, ua, fa, side, "down" if spec.endswith("chin") else "out")
-                hand = tgt
-            else:
-                a, e = spec
-                d1 = _dir(a, side)
-                elbow = (sh[0] + ua * d1[0], sh[1] + ua * d1[1])
-                d2 = _dir(a + e, side)
-                hand = (elbow[0] + fa * d2[0], elbow[1] + fa * d2[1])
-            hands[side] = (sh, elbow, hand)
-        # arms that reach the face are drawn after the head
-        late = [sd for sd in (1, -1) if hands[sd][2][1] < hands[sd][0][1] - ua * 0.3 or (
-            isinstance(ARM_POSES.get(arm_pose, ARM_POSES["stand"])[0 if sd > 0 else 1], str) and not walking)]
-        for side in (1, -1):
-            if side not in late:
-                _draw_arm(cv, s, *hands[side])
-
-        # ---------------- head
-        _draw_head(cv, s, head_cy, expr, mouth_open, look, blink, t, props)
-
-        for side in late:
-            _draw_arm(cv, s, *hands[side])
-
-        # ---------------- hand props
-        for pr in props:
-            nm, _, hand = pr.partition("@")
-            if nm in HAND_PROPS:
-                side = -1 if hand == "L" else 1
-                HAND_PROPS[nm](cv, hands[side][2], side, s, t)
-
-        def g(p):
-            return cv.to_screen(*p)
-
-        out = {
-            "head": g((0, head_cy)), "head_r": R * scale, "mouth": g((0, mouth_y)),
-            "hand_r": g(hands[1][2]), "hand_l": g(hands[-1][2]),
-            "top": g((0, head_cy - R * 1.15)), "chest": g((0, top + th * 0.35)),
-            "feet": g((0, 0 if not sitting else hip_y + leg * 0.88)),
-        }
-    # to_screen gives screen coords; convert back into the caller's frame is not needed for
-    # the common case (caller frame == screen or camera). Provide both for clarity.
+    with cv.at(x, y, scale * K, flip=flip, rot=lean if not flip else -lean):
+        legs_feet = _draw_legs(cv, s, g, sitting, pose, phase, bob)
+        with cv.at(0, u):
+            _draw_torso(cv, s, g)
+            arms = _arms(g, arm_pose, pose, t)
+            hy = nod / K if K else 0.0
+            with cv.at(4 if head_m < 0 else 0, hy, 1, flip=head_m < 0):
+                hd = _draw_head(cv, s, expr, mouth_open, (lx * body_dir * head_m, ly), blink, t, props)
+                pts = {k: cv.to_screen(*p) for k, p in hd.items()}
+            for side in (-1, 1):
+                sh, e, h = arms[side]
+                cv.line([sh, e, h], s.get("arm_color", INK), 7)
+            for side in (-1, 1):
+                h = arms[side][2]
+                cv.circle(h[0], h[1], 11, fill=s["skin"], ow=4)
+            pts["hand_r"] = cv.to_screen(*arms[1][2])
+            pts["hand_l"] = cv.to_screen(*arms[-1][2])
+            pts["chest"] = cv.to_screen(0, -160 + 40 * (g["tf"] - 1) * 0.3)
+            pts["shoulder"] = cv.to_screen(0, SH_Y)
+            hands_local = {side: arms[side][2] for side in (-1, 1)}
+        pts["feet"] = cv.to_screen(0, legs_feet)
+        # hand props are sized in character pixels: draw them in the (x, y, scale) frame
+        hp = [pr for pr in props if pr.partition("@")[0] in HAND_PROPS]
+        if hp:
+            ps = dict(s, hand_r=11 * K, hand_ow=4 * K)
+            with cv.at(0, 0, 1 / K):
+                for pr in hp:
+                    nm, _, hand = pr.partition("@")
+                    side = -1 if hand == "L" else 1
+                    hx, hy2 = hands_local[side]
+                    HAND_PROPS[nm](cv, (hx * K, (hy2 + u) * K), side, ps, t)
+    out.update(pts)
+    out["head_r"] = 70 * K * scale
     return out
 
 
-def _torso_pts(tw, top, bottom, waist, r):
-    """Shoulders tw wide with rounded corners, tapering to waist*tw at the bottom."""
-    pts = ellipse_pts(-tw / 2 + r, top + r, r, r, 180, 270, 6) + ellipse_pts(tw / 2 - r, top + r, r, r, 270, 360, 6)
-    pts += [(tw * waist / 2, bottom), (-tw * waist / 2, bottom)]
-    return pts
+def _draw_legs(cv, s, g, sitting, pose, phase, bob):
+    """Ink stick legs with oval ink shoes. Returns the local y of the feet."""
+    hip = g["hip"] + bob
+    shoes = s.get("shoes", INK)
+    if sitting:
+        L = 102 * g["lf"]
+        fy = hip + 0.86 * L + 16
+        for side in (-1, 1):
+            kx = 40 + 9 * side + 10 * (g["lf"] - 1)
+            knee = (kx, hip + 6)
+            foot = (kx - 2, fy - 16)
+            cv.line([(side * 8, hip), knee, foot], INK, 7)
+            cv.ellipse(kx + 6, fy - 9, 15, 8, fill=shoes, ow=4)
+        return fy
+    if pose in ("walk", "run", "walk_carry"):
+        run = pose == "run"
+        L = -16 - g["hip"]
+        for side in (-1, 1):
+            ph = phase + (0 if side > 0 else math.pi)
+            stride = math.cos(ph) * L * (0.24 if not run else 0.42)
+            lift = max(0.0, math.sin(ph)) * L * (0.12 if not run else 0.3)
+            fx = side * 4 + stride
+            fy = -16 - lift
+            if lift > 2:
+                knee = (side * 4 + stride * 0.5 + L * (0.08 if not run else 0.2), hip + L * 0.5 - lift * 0.5)
+                cv.line([(side * 6, hip), knee, (fx, fy)], INK, 7)
+            else:
+                cv.line([(side * 6, hip), (fx, fy)], INK, 7)
+            cv.ellipse(fx + 5, fy + 7, 15, 8, fill=shoes, ow=4)
+        return 0.0
+    cv.line([(-9, hip), (-15, -16)], INK, 7)
+    cv.line([(9, hip), (15, -16)], INK, 7)
+    cv.ellipse(-20, -9, 15, 8, fill=shoes, ow=4)
+    cv.ellipse(21, -9, 15, 8, fill=shoes, ow=4)
+    return 0.0
 
 
-def _draw_arm(cv, s, sh, elbow, hand):
-    skin = s["skin"]
-    cv.limb([sh, elbow, hand], s["arm_w"], skin)
-    # short sleeve over the upper arm
-    sl = (lerp(sh[0], elbow[0], 0.55), lerp(sh[1], elbow[1], 0.55))
-    sleeve_col = s["shirt"]
-    long_sleeve = s["kind"] == "adult" and s["name"] in ("TEACHER",) or s.get("hood")
-    if long_sleeve:
-        cv.limb([sh, elbow, (lerp(elbow[0], hand[0], 0.8), lerp(elbow[1], hand[1], 0.8))], s["arm_w"] + 3,
-                sleeve_col)
+def _draw_torso(cv, s, g):
+    """Engine shirt (tunic) in upper-body coords: top at -190, hem at -190 + 90*torso."""
+    tf, wf = g["tf"], g["wf"]
+    top, hem = -190.0, -190.0 + 90 * tf
+    shirt = s["shirt"]
+    w0, w1 = 27 * wf, 34 * wf
+    bottom = s.get("bottom")
+    if s.get("hood"):     # hood behind the neck
+        cv.ellipse(0, top + 2, 34 * wf, 14, fill=shade(shirt, 0.8), ow=5)
+    if bottom == "aodai":
+        # áo dài: fitted to the waist, long front/back panels down the legs, side slits
+        long_hem = hem + 0.55 * (102 * g["lf"])
+        pts = [(-w0, top), (w0, top), (w1 * 0.92, hem - 6), (w1 * 1.08, long_hem),
+               (-w1 * 1.08, long_hem), (-w1 * 0.92, hem - 6)]
+        cv.poly(pts, fill=shirt, outline=None)
+        cv.poly([(-w0, top), (-w0 * 0.5, top), (-w1 * 0.5, long_hem), (-w1 * 1.08, long_hem), (-w1 * 0.92, hem - 6)],
+                fill=shade(shirt, 0.78), outline=None)
+        cv.poly(pts, fill=None, ow=6)
+        cv.line([(0, hem - 6), (0, long_hem)], INK, 3)
+        cv.rect(-12, top - 6, 16, top + 6, fill=shirt, ow=4, radius=4)       # mandarin collar
+        return
+    if bottom == "dress":
+        skirt = s.get("skirt", shirt)
+        waist = top + (hem - top) * 0.55
+        fl = 44 * wf
+        sk = [(-w0 * 1.02, waist), (w0 * 1.02, waist), (fl, hem + 10), (-fl, hem + 10)]
+        cv.poly(sk, fill=skirt, outline=None)
+        cv.poly([(-w0 * 1.02, waist), (-w0 * 0.5, waist), (-fl * 0.5, hem + 10), (-fl, hem + 10)],
+                fill=shade(skirt, 0.78), outline=None)
+        cv.poly(sk, fill=None, ow=6)
+        body = [(-w0, top), (w0, top), (w0 * 1.04, waist + 2), (-w0 * 1.04, waist + 2)]
+        cv.poly(body, fill=shirt, outline=None)
+        cv.poly([(-w0, top), (-13 * wf, top), (-14 * wf, waist + 2), (-w0 * 1.04, waist + 2)],
+                fill=shade(shirt, 0.78), outline=None)
+        cv.poly(body, fill=None, ow=6)
     else:
-        cv.limb([sh, sl], s["arm_w"] + 4, sleeve_col)
-    cv.circle(hand[0], hand[1], s["hand_r"], fill=skin)
+        if s.get("belly"):
+            front = bezier((w0, top), (w1 * 1.45, top + (hem - top) * 0.7), (w1 * 1.02, hem), 10)
+            pts = [(-w0, top)] + front + bezier((w1 * 1.02, hem), (0, hem + 7), (-w1, hem), 8)[1:]
+        else:
+            pts = [(-w0, top), (w0, top)] + bezier((w1, hem), (0, hem + 7), (-w1, hem), 8)
+        cv.poly(pts, fill=shirt, outline=None)
+        cv.poly([(-w0, top), (-13 * wf, top), (-15 * wf, hem + 4), (-25 * wf, hem + 3), (-w1, hem)],
+                fill=shade(shirt, 0.78), outline=None)
+        cv.poly(pts, fill=None, ow=6)
+    if s.get("hood"):     # drawstrings
+        cv.line([(-7, top + 4), (-9, top + 30)], WHITE, 3)
+        cv.line([(9, top + 4), (11, top + 30)], WHITE, 3)
+    neck = s.get("neck")
+    if neck == "tie":
+        ln = min(tf, 1.5)
+        with cv.at(4, -188):
+            cv.poly([(-7, 0), (7, 0), (10, 56 * ln), (0, 68 * ln), (-10, 56 * ln)], fill=s.get("tie_color", INK),
+                    ow=4)
+    elif neck == "scarf":
+        cv.poly([(-28 * wf, -192), (28 * wf, -192), (6, -150), (0, -138), (-6, -150)],
+                fill=s.get("scarf_color", _hex("#D62828")), ow=4)
+    if s.get("badge"):
+        cv.circle(16 * wf, -160, 6, fill=P.GOLD, ow=3)
+    if bottom == "dress" and s.get("bow_color") and s.get("skirt"):
+        _bow(cv, 2, -186, 14, s.get("bow_color"))
+
+
+# ------------------------------------------------------------------ head & face
+def _draw_head(cv, s, expr, mouth_open, look, blink, t, props):
+    """Engine head in upper-body coords. Returns local anchor points."""
+    hair = s.get("hair") or "short"
+    hc = s["hair_color"]
+    skin = s["skin"]
+    hat = s.get("hat")
+    hp = set(props) | ({hat} if hat else set())
+    if hair == "topknot":
+        cv.circle(0, -352, 21, fill=hc, ow=6)
+    if hair == "bun":
+        cv.circle(-46, -334, 25, fill=hc, ow=6)
+    if "wig" in hp:
+        _hp_wig_back(cv, s)
+    _draw_path(cv, HEAD_PATH, fill=skin, ow=6)
+    if hair in HAIR and not ("police_cap" in hp or "non_la" in hp):
+        _draw_path(cv, HAIR[hair], fill=hc, ow=6)
+        if hair in HAIR_LINES:
+            for sp in _path(HAIR_LINES[hair]):
+                cv.line(sp, shade(hc, 1.6), 4)
+    elif hair in HAIR:     # hat covers the top: show only the sides
+        _draw_path(cv, HAIR["cap_short"], fill=hc, ow=6)
+    if s.get("grey_temples"):
+        grey = (196, 192, 188)
+        cv.poly([(-66, -281), (-64, -300), (-54, -297), (-56, -284)], fill=grey, outline=None)
+        cv.poly([(68, -289), (66, -306), (58, -300), (60, -292)], fill=grey, outline=None)
+        cv.line([(-64, -296), (-58, -308)], grey, 3)
+        cv.line([(20, -334), (30, -316)], grey, 3)
+    if s.get("bow") and not hat:
+        _bow(cv, 42, -338, 17, s.get("bow_color", _hex("#E0405A")))
+    _draw_face(cv, s, expr, mouth_open, look, blink)
+    for pr in props:
+        if pr in HEAD_PROPS:
+            HEAD_PROPS[pr](cv, s, t)
+    if hat and hat in HEAD_PROPS and hat not in props:
+        HEAD_PROPS[hat](cv, s, t)
+    top = min(HAIR_TOP.get(hair, -340), -334)
+    if hat == "non_la" or "non_la" in props:
+        top = -430
+    elif hat or any(p in HEAD_PROPS for p in props):
+        top = min(top, -372)
+    return {"head": (2, -262), "mouth": (MO[0], MO[1] + 2), "top": (2, top)}
+
+
+def _bow(cv, x, y, r, col):
+    cv.poly([(x, y), (x - r, y - r * 0.65), (x - r, y + r * 0.6)], fill=col, ow=4)
+    cv.poly([(x, y), (x + r, y - r * 0.65), (x + r, y + r * 0.6)], fill=col, ow=4)
+    cv.circle(x, y, r * 0.3, fill=col, ow=4)
+
+
+def _lum(c):
+    return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+
+
+def _draw_face(cv, s, expr, mouth_open, look, blink):
+    eyes, brows, m_rest, m_talk = EXPRESSIONS.get(expr, EXPRESSIONS["neutral"])
+    lx, ly = clamp(look[0], -1, 1), clamp(look[1], -1, 1)
+    dx, dy = lx * 4, ly * 4
+    if eyes == "half" and ly == 0:
+        dy = 2
+    ink = INK if _lum(s["skin"]) > 90 else (255, 246, 210)      # silhouettes: glowing eyes
+    es = s.get("eye_scale", 1.0)
+    # brows (thick, follow the expression)
+    for i, (ex, ey) in enumerate((E1, E2)):
+        _brow(cv, brows, ex + dx * 0.5, ey, i, ink)
+    if s.get("bags"):
+        _q(cv, (-2, -244), (6, -238), (14, -244), 4, (154, 143, 166))
+        _q(cv, (28, -244), (36, -238), (44, -244), 4, (154, 143, 166))
+    ek = eyes
+    if blink >= 0.5 and eyes not in ("x", "nham", "cuoi"):
+        ek = "blink"
+    elif blink >= 0.15 and eyes == "thuong":
+        ek = "half"
+    for ex, ey in (E1, E2):
+        _eye(cv, ek, ex + dx, ey + dy, es, ink)
+    if s.get("glasses"):
+        for ex, ey in (E1, E2):
+            cv.circle(ex, ey, 15, fill=None, ow=4)
+        cv.line([(E1[0] + 15, E1[1] - 2), (E2[0] - 15, E2[1] - 2)], INK, 4)
+        cv.line([(E1[0] - 15, E1[1] - 4), (-30, -262)], INK, 4)
+    if s.get("bandaid"):
+        with cv.at(-34, -230, 1, rot=28):
+            cv.rect(-11, -5, 11, 5, fill=(240, 210, 170), radius=3, ow=3)
+            cv.line([(-2, -2), (2, 2)], (200, 160, 120), 2)
+    if s.get("mustache"):
+        cv.poly(bezier((24, -232), (4, -236), (2, -224), 6) + bezier((2, -224), (24, -228), (46, -224), 6)
+                + bezier((46, -224), (44, -236), (24, -232), 6), fill=(84, 78, 82), ow=3)
+    _mouth(cv, s, m_rest, m_talk, mouth_open, ink)
+
+
+def _brow(cv, kind, x, y, i, ink):
+    w = 6.5
+
+    def arc(dy, h):
+        _q(cv, (x - 9, y + dy), (x, y + dy - h), (x + 9, y + dy), w, ink)
+
+    def tilt(a, b):
+        cv.line([(x - 9, y + a), (x + 9, y + b)], ink, w)
+    if kind in ("cuoi", "nham"):
+        arc(-22, 5)
+    elif kind == "tron":
+        arc(-25, 4)
+    elif kind == "luom":
+        if i:
+            arc(-23, 5)
+        else:
+            tilt(-20, -14)
+    elif kind == "x":                      # engine 'x' (pain)
+        if i:
+            tilt(-16, -24)
+        else:
+            tilt(-24, -16)
+    elif kind == "sad":                    # worried / sad: inner ends up
+        if i:
+            tilt(-24, -15)
+        else:
+            tilt(-15, -24)
+    elif kind == "angry":                  # inner ends down
+        if i:
+            tilt(-14, -24)
+        else:
+            tilt(-24, -14)
+    elif kind == "flat":
+        tilt(-17, -17)
+    else:
+        arc(-20, 3)
+
+
+def _eye(cv, kind, x, y, es, ink):
+    w = 7
+    if kind == "blink":
+        cv.line([(x - 9, y), (x + 9, y)], ink, w)
+    elif kind == "half":                   # heavy lid: flat lid line over the lower half of the oval
+        cv.poly(ellipse_pts(x, y + 1, 7 * es, 8 * es, 0, 180, 12), fill=ink, outline=None)
+        cv.line([(x - 9 * es, y + 1), (x + 9 * es, y + 1)], ink, 5)
+    elif kind == "cuoi":
+        _q(cv, (x - 9, y + 4), (x, y - 9), (x + 9, y + 4), w, ink)
+    elif kind == "nham":
+        _q(cv, (x - 9, y - 2), (x, y + 7), (x + 9, y - 2), w, ink)
+    elif kind == "tron":
+        cv.circle(x, y, 10 * es, fill=WHITE, outline=ink if ink == INK else INK, ow=5)
+        cv.circle(x + 1, y + 1, 4 * es, fill=INK, outline=None)
+    elif kind == "luom":
+        cv.line([(x - 10, y - 3), (x + 10, y - 3)], ink, w)
+        cv.circle(x + 5, y + 3, 4, fill=ink, outline=None)
+    elif kind == "x":
+        cv.line([(x - 8, y - 8), (x + 8, y + 8)], ink, w)
+        cv.line([(x + 8, y - 8), (x - 8, y + 8)], ink, w)
+    else:
+        cv.ellipse(x, y, 7 * es, 10 * es, fill=ink, outline=None)
+
+
+def _mouth(cv, s, rest, talk, m, ink):
+    x, y = MO
+    m = clamp(m)
+    teeth = s.get("missing_teeth")
+    line_col = (176, 60, 72) if s.get("lips") and ink == INK else ink
+    st = 5
+    if m > 0.06 or rest == "o":
+        if rest == "o" and m < 0.3:
+            m = 0.45
+        if talk == "smile":
+            k = 1.0 + 0.6 * m
+            pts = bezier((x - 14 * k, y - 5), (x, y + 16 * k + 4 * m), (x + 14 * k, y - 5), 12)
+            cv.poly(pts, fill=MOUTH_RED, ow=st)
+            if teeth:
+                _gap_teeth(cv, x, y - 5, 11 * k, 7)
+            return
+        ry, rx = 2.5 + 9.5 * m, 8 + 3.5 * m
+        cy = y + m * 2
+        cv.ellipse(x, cy, rx, ry, fill=MOUTH_RED, ow=st)
+        if teeth and ry > 5:
+            top = cy - ry
+            th = min(6.0, ry * 0.7)
+            band = [(px, py) for px, py in ellipse_pts(x, cy, rx - 1.5, ry - 1.5, 180, 360, 20) if py <= top + th + 1.5]
+            if len(band) > 2:
+                cv.poly(band, fill=WHITE, outline=None)
+                cv.rect(x - 3, top, x + 3, top + th + 1, fill=INK, outline=None)
+            cv.ellipse(x, cy, rx, ry, fill=None, ow=st)
+        return
+    if rest == "cuoi":
+        if teeth:      # engine 'sun' mouth: wide grin with the gap in the front teeth
+            cv.poly(bezier((x - 16, y - 6), (x, y + 24), (x + 16, y - 6), 12), fill=MOUTH_RED, ow=st)
+            cv.rect(x - 12, y - 5, x + 12, y + 2, fill=WHITE, outline=None)
+            cv.rect(x - 2, y - 5, x + 4, y + 2, fill=INK, outline=None)
+        else:
+            cv.poly(bezier((x - 14, y - 5), (x, y + 16), (x + 14, y - 5), 12), fill=MOUTH_RED, ow=st)
+    elif rest == "mim":
+        _q(cv, (x - 11, y), (x, y + 7), (x + 12, y - 5), st, line_col)
+    elif rest == "meo":
+        cv.line(bezier((x - 12, y + 4), (x - 4, y - 7), (x + 2, y + 2), 6)
+                + bezier((x + 2, y + 2), (x + 8, y + 7), (x + 13, y - 2), 6)[1:], line_col, st)
+    elif rest == "frown":
+        _q(cv, (x - 11, y + 4), (x, y - 6), (x + 11, y + 4), st, line_col)
+    elif rest == "side":
+        cv.line([(x - 8, y + 1), (x + 9, y - 2)], line_col, st)
+    else:  # ngam
+        cv.line([(x - 8, y), (x + 8, y)], line_col, st)
+
+
+def _gap_teeth(cv, x, top, half_w, th):
+    """Ti's signature: two front teeth missing (white top row with an ink gap in the middle)."""
+    cv.rect(x - half_w * 0.85, top + 0.5, x + half_w * 0.85, top + th, fill=WHITE, outline=None)
+    cv.rect(x - 3, top + 0.5, x + 3, top + th, fill=INK, outline=None)
 
 
 def auto_blink(t, seed=0, period=3.7):
@@ -356,306 +729,81 @@ def auto_blink(t, seed=0, period=3.7):
     return 0.0
 
 
-# ------------------------------------------------------------------ head & face
-def _draw_head(cv, s, cy, expr, mouth_open, look, blink, t, props):
-    R = s["head_r"]
-    skin = s["skin"]
-    hair = s.get("hair")
-    hc = s["hair_color"]
-    # back hair layers
-    if hair == "bob":
-        cv.poly([(-R * 1.12, cy - R * 0.2)] + ellipse_pts(0, cy - R * 0.05, R * 1.12, R * 1.08, 180, 360, 24)
-                + [(R * 1.12, cy + R * 0.62), (-R * 1.12, cy + R * 0.62)], fill=hc)
-    elif hair == "ponytail_bow":
-        sway = math.sin(t * 3) * 4
-        cv.poly(bezier((R * 0.6, cy - R * 0.75), (R * 1.7 + sway, cy - R * 0.8), (R * 1.35 + sway, cy + R * 0.7), 12)
-                + bezier((R * 1.1 + sway, cy + R * 0.6), (R * 1.25, cy - R * 0.2), (R * 0.5, cy - R * 0.45), 10),
-                fill=hc)
-    elif hair == "bun":
-        cv.circle(0, cy - R * 1.02, R * 0.42, fill=hc)
-    # ears
-    for side in (-1, 1):
-        cv.circle(side * R * 0.97, cy + R * 0.12, R * 0.2, fill=skin)
-    cv.circle(0, cy, R, fill=skin)
-
-    _draw_face(cv, s, cy, expr, mouth_open, look, blink)
-
-    # front hair
-    if hair == "bowl" or hair == "bowl_grey":
-        fr = -0.42 if hair == "bowl" else -0.56
-        pts = ellipse_pts(0, cy - R * 0.04, R * 1.07, R * 1.08, 172, 368, 30)
-        fringe = []
-        n = 7
-        for i in range(n + 1):
-            fx = lerp(R * 0.74, -R * 0.74, i / n)
-            fy = cy + R * fr + (R * 0.05 if i % 2 else 0)
-            fringe.append((fx, fy))
-        pts = pts + [(R * 0.80, cy + R * 0.12)] + fringe + [(-R * 0.80, cy + R * 0.12)]
-        cv.poly(pts, fill=hc)
-        if hair == "bowl":
-            cv.curve((R * 0.05, cy - R * 1.08), (R * 0.25, cy - R * 1.45), (R * 0.42, cy - R * 1.2), INK, 3.2)
-        else:
-            for side in (-1, 1):   # grey temples
-                cv.poly([(side * R * 1.02, cy - R * 0.1), (side * R * 0.8, cy + R * 0.12),
-                         (side * R * 0.74, cy - R * 0.3), (side * R * 0.98, cy - R * 0.4)], fill=P.HAIR_WHITE,
-                        ow=2.5)
-    elif hair == "spiky":
-        pts = []
-        n = 9
-        for i in range(n + 1):
-            a = 180 + 180 * i / n
-            r = R * (1.38 if i % 2 else 1.02)
-            pts.append((math.cos(math.radians(a)) * r, cy - R * 0.05 + math.sin(math.radians(a)) * r))
-        pts += [(R * 0.9, cy - R * 0.05), (R * 0.55, cy - R * 0.42), (R * 0.25, cy - R * 0.3),
-                (-R * 0.1, cy - R * 0.45), (-R * 0.45, cy - R * 0.32), (-R * 0.9, cy - R * 0.05)]
-        cv.poly(pts, fill=hc)
-    elif hair == "bob":
-        pts = ellipse_pts(0, cy - R * 0.05, R * 1.1, R * 1.08, 180, 360, 24)
-        pts += [(R * 1.1, cy + R * 0.55), (R * 0.82, cy + R * 0.55), (R * 0.78, cy - R * 0.32),
-                (-R * 0.78, cy - R * 0.32), (-R * 0.82, cy + R * 0.55), (-R * 1.1, cy + R * 0.55)]
-        cv.poly(pts, fill=hc)
-    elif hair == "ponytail_bow":
-        pts = ellipse_pts(0, cy - R * 0.03, R * 1.06, R * 1.06, 185, 355, 24)
-        pts += bezier((R * 1.0, cy - R * 0.25), (R * 0.2, cy - R * 0.2), (-R * 0.55, cy - R * 0.55), 10)
-        pts += [(-R * 0.9, cy - R * 0.1)]
-        cv.poly(pts, fill=hc)
-        _bow(cv, -R * 0.55, cy - R * 0.98, R * 0.55, s.get("bow_color", P.BOW_RED))
-    elif hair == "bun":
-        pts = ellipse_pts(0, cy - R * 0.05, R * 1.06, R * 1.05, 182, 358, 24)
-        pts += bezier((R * 1.0, cy + R * 0.05), (R * 0.6, cy - R * 0.62), (0, cy - R * 0.62), 8)
-        pts += bezier((0, cy - R * 0.62), (-R * 0.6, cy - R * 0.62), (-R * 1.0, cy + R * 0.05), 8)
-        cv.poly(pts, fill=hc)
-    elif hair == "short":
-        pts = ellipse_pts(0, cy - R * 0.05, R * 1.06, R * 1.05, 185, 355, 24)
-        pts += [(R * 0.98, cy - R * 0.15), (R * 0.85, cy - R * 0.5), (-R * 0.2, cy - R * 0.62),
-                (-R * 0.85, cy - R * 0.35), (-R * 0.98, cy - R * 0.15)]
-        cv.poly(pts, fill=hc)
-    elif hair == "messy":
-        pts = ellipse_pts(0, cy - R * 0.05, R * 1.1, R * 1.1, 180, 360, 24)
-        pts += [(R * 1.05, cy + R * 0.1), (R * 0.7, cy - R * 0.2), (R * 0.45, cy - R * 0.1), (R * 0.15, cy - R * 0.28),
-                (-R * 0.2, cy - R * 0.12), (-R * 0.5, cy - R * 0.3), (-R * 0.8, cy - R * 0.05), (-R * 1.05, cy + R * 0.1)]
-        cv.poly(pts, fill=hc)
-    elif hair == "non_la":
-        cv.poly(ellipse_pts(0, cy - R * 0.1, R * 1.04, R * 1.0, 185, 355, 16) + [(R * 0.9, cy - R * 0.1),
-                                                                               (-R * 0.9, cy - R * 0.1)], fill=hc)
-        cv.poly([(0, cy - R * 1.75), (R * 1.55, cy - R * 0.38), (-R * 1.55, cy - R * 0.38)], fill=(238, 214, 156))
-        for k in (0.35, 0.6, 0.82):
-            cv.line([(-R * 1.55 * k, cy - R * 1.75 + R * 1.37 * k), (R * 1.55 * k, cy - R * 1.75 + R * 1.37 * k)],
-                    (190, 160, 100), 2)
-        cv.curve((-R * 0.85, cy - R * 0.4), (0, cy + R * 1.25), (R * 0.85, cy - R * 0.4), INK, 2)
-
-    # eyebrows (after hair so they read on top)
-    _draw_brows(cv, s, cy, expr)
-
-    # head props
-    for pr in props:
-        if pr in HEAD_PROPS:
-            HEAD_PROPS[pr](cv, cy, R, s, t)
-    if s.get("hat") and s["hat"] in HEAD_PROPS and s["hat"] not in props:
-        HEAD_PROPS[s["hat"]](cv, cy, R, s, t)
+# ------------------------------------------------------------------ head props (engine units)
+def _hp_notebook_hat(cv, s, t):
+    with cv.at(2, -334, 1, rot=-8):
+        cv.poly([(-62, 6), (0, -40), (62, 6)], fill=(70, 120, 200), ow=5)        # open notebook as a tent
+        cv.line([(0, -40), (0, 4)], INK, 4)
+        cv.line([(-40, -6), (-8, -28)], WHITE, 4)
+        cv.line([(10, -26), (40, -6)], WHITE, 4)
 
 
-def _bow(cv, x, y, r, col):
-    cv.poly([(x, y), (x - r, y - r * 0.6), (x - r * 0.95, y + r * 0.55)], fill=col)
-    cv.poly([(x, y), (x + r, y - r * 0.6), (x + r * 0.95, y + r * 0.55)], fill=col)
-    cv.circle(x, y, r * 0.26, fill=col)
+def _hp_wig_back(cv, s):
+    for px, py in ((-66, -220), (-72, -250), (70, -220), (74, -250), (-62, -196), (66, -196)):
+        cv.circle(px, py, 18, fill=WHITE, ow=4)
 
 
-def _draw_brows(cv, s, cy, expr):
-    R = s["head_r"]
-    e = EXPRESSIONS.get(expr, EXPRESSIONS["neutral"])
-    dy, tilt = e[2], e[3]
-    es = s["eye_scale"]
-    ex = R * 0.38
-    by = cy - R * (0.28 + 0.06 * (es - 1)) + dy * R
-    if s.get("hair") == "bowl":
-        by = max(by, cy - R * 0.36)
-    elif s.get("hair") == "bowl_grey":
-        by = max(by, cy - R * 0.46)
-    col = INK
-    for side in (-1, 1):
-        x0, x1 = side * (ex - R * 0.17), side * (ex + R * 0.17)
-        y0 = y1 = by
-        if tilt == 1:      # angry: inner end down
-            y0 += R * 0.10
-            y1 -= R * 0.04
-        elif tilt == 2:    # sad: inner end up
-            y0 -= R * 0.10
-            y1 += R * 0.03
-        elif tilt == -1 and side == -1:  # smug: one brow up
-            y0 -= R * 0.08
-            y1 -= R * 0.12
-        cv.line([(x0, y0), (x1, y1)], col, max(2.6, R * 0.085))
+def _hp_wig(cv, s, t):
+    pts = [(-70, -280), (-64, -310), (-44, -334), (-14, -346), (18, -346), (46, -334), (66, -310), (72, -280)]
+    for px, py in pts:
+        cv.circle(px, py, 20, fill=WHITE, ow=4)
 
 
-def _draw_face(cv, s, cy, expr, mouth_open, look, blink):
-    R = s["head_r"]
-    e = EXPRESSIONS.get(expr, EXPRESSIONS["neutral"])
-    lid, pup_s, _, _, mouth, e_sc = e
-    es = s["eye_scale"] * e_sc
-    ex, ey = R * 0.38, cy + R * 0.02
-    rx, ry = R * 0.16 * es, R * 0.20 * es
-    pr = R * 0.085 * math.sqrt(es) * pup_s
-    lx, ly = look
-    if expr in ("bored",) and ly == 0:
-        ly = 0.35
-    closure = clamp(max(lid, blink))
-    for side in (-1, 1):
-        x = side * ex
-        if closure >= 0.92:
-            cv.line([(x - rx, ey + ry * 0.2), (x + rx, ey + ry * 0.2)], INK, 3)
-            continue
-        cv.ellipse(x, ey, rx, ry, fill=P.EYE_WHITE, ow=2.6)
-        px = x + lx * (rx - pr) * 0.85
-        py = ey + ly * (ry - pr) * 0.85
-        cv.circle(px, py, pr, fill=INK, outline=None)
-        cv.circle(px - pr * 0.35, py - pr * 0.35, pr * 0.3, fill=P.WHITE, outline=None)
-        if closure > 0.02:
-            cut = ey - ry + 2 * ry * closure
-            arc = [(px_, py_) for px_, py_ in ellipse_pts(x, ey, rx + 1.4, ry + 1.4, 180, 360, 20) if py_ <= cut]
-            if arc:
-                lidpoly = [(x - rx - 1.6, cut)] + arc + [(x + rx + 1.6, cut)]
-                cv.poly(lidpoly, fill=s["skin"], outline=None)
-                cv.ellipse(x, ey, rx, ry, fill=None, ow=2.6)
-                cv.line([(x - rx, cut), (x + rx, cut)], INK, 2.8)
-    # cheeks
-    if s.get("cheeks"):
-        for side in (-1, 1):
-            cv.ellipse(side * R * 0.62, cy + R * 0.36, R * 0.13, R * 0.09, fill=P.CHEEK, outline=None)
-    # nose
-    if s["kind"] == "adult":
-        cv.curve((-R * 0.02, cy + R * 0.08), (R * 0.12, cy + R * 0.28), (-R * 0.06, cy + R * 0.3), INK, 2.6)
-    else:
-        cv.curve((-R * 0.06, cy + R * 0.24), (0, cy + R * 0.3), (R * 0.06, cy + R * 0.24), INK, 2.4)
-    if s.get("bandaid"):
-        with cv.at(R * 0.6, cy + R * 0.45, 1, rot=-25):
-            cv.rect(-R * 0.18, -R * 0.07, R * 0.18, R * 0.07, fill=(240, 210, 170), radius=3, ow=2)
-            cv.line([(-R * 0.03, -R * 0.03), (R * 0.03, R * 0.03)], (200, 160, 120), 1.5)
-    if s.get("glasses"):
-        for side in (-1, 1):
-            cv.ellipse(side * ex, ey, R * 0.25, R * 0.22, fill=None, ow=2.6)
-        cv.line([(-ex + R * 0.25, ey - 2), (ex - R * 0.25, ey - 2)], INK, 2.6)
-    if s.get("mustache"):
-        my = cy + R * 0.38
-        cv.poly(bezier((0, my - R * 0.06), (-R * 0.35, my - R * 0.12), (-R * 0.48, my + R * 0.12), 8)
-                + bezier((-R * 0.48, my + R * 0.12), (-R * 0.2, my + R * 0.04), (0, my + R * 0.06), 6)
-                + bezier((0, my + R * 0.06), (R * 0.2, my + R * 0.04), (R * 0.48, my + R * 0.12), 6)
-                + bezier((R * 0.48, my + R * 0.12), (R * 0.35, my - R * 0.12), (0, my - R * 0.06), 8),
-                fill=(84, 78, 82), ow=2.4)
-    _draw_mouth(cv, s, cy, mouth, mouth_open)
+def _hp_police_cap(cv, s, t):
+    cv.poly([(-66, -292), (-74, -352), (78, -352), (70, -292)], fill=(50, 64, 110), ow=6)
+    cv.poly([(-8, -298), (82, -298), (96, -284), (-4, -284)], fill=INK, ow=4)            # visor (front)
+    cv.circle(4, -324, 11, fill=P.GOLD, ow=4)
 
 
-def _draw_mouth(cv, s, cy, mouth, m):
-    R = s["head_r"]
-    my = cy + R * (0.5 if not s.get("mustache") else 0.62)
-    mw = R * 0.36
-    teeth = s.get("missing_teeth")
-    m = clamp(m)
-    lipcol = (190, 70, 80) if s.get("lips") else INK
-    if m > 0.06 or mouth in ("O",):
-        if mouth == "O" and m < 0.3:
-            m = 0.55
-        if mouth in ("smile", "smirk"):
-            h = R * (0.12 + 0.22 * m)
-            pts = [(-mw * 0.75, my - R * 0.03)] + ellipse_pts(0, my - R * 0.03, mw * 0.75, h, 0, 180, 16)[::-1]
-            pts = ellipse_pts(0, my - R * 0.03, mw * 0.75, h, 0, 180, 16) + [(-mw * 0.75, my - R * 0.03)]
-            cv.poly(pts, fill=P.MOUTH, ow=2.8)
-            top = my - R * 0.03
-        else:
-            rx = mw * (0.42 + 0.18 * m)
-            ry = R * (0.05 + 0.17 * m)
-            cv.ellipse(0, my, rx, ry, fill=P.MOUTH, ow=2.8)
-            top = my - ry
-            if ry > R * 0.1:
-                cv.ellipse(0, my + ry * 0.45, rx * 0.55, ry * 0.4, fill=P.TONGUE, outline=None)
-        if teeth:
-            _gap_teeth(cv, R, top, mw)
-        return
-    if mouth == "flat":
-        cv.line([(-mw * 0.45, my), (mw * 0.45, my)], lipcol, 3)
-    elif mouth == "flat_side":
-        cv.line([(-mw * 0.35, my + 1), (mw * 0.5, my - 1.5)], lipcol, 3)
-    elif mouth == "smile":
-        if teeth:
-            pts = ellipse_pts(0, my - R * 0.04, mw * 0.72, R * 0.2, 0, 180, 16) + [(-mw * 0.72, my - R * 0.04)]
-            cv.poly(pts, fill=P.MOUTH, ow=2.8)
-            _gap_teeth(cv, R, my - R * 0.04, mw)
-        else:
-            cv.curve((-mw * 0.7, my - R * 0.05), (0, my + R * 0.2), (mw * 0.7, my - R * 0.05), lipcol, 3.2)
-    elif mouth == "smirk":
-        cv.curve((-mw * 0.5, my + R * 0.02), (mw * 0.1, my + R * 0.08), (mw * 0.65, my - R * 0.1), lipcol, 3.2)
-    elif mouth == "frown":
-        cv.curve((-mw * 0.6, my + R * 0.08), (0, my - R * 0.12), (mw * 0.6, my + R * 0.08), lipcol, 3.2)
-    elif mouth == "frown_flat":
-        cv.line([(-mw * 0.5, my + 3), (0, my), (mw * 0.5, my + 3)], lipcol, 3.2)
-    elif mouth == "wavy":
-        pts = [(-mw * 0.6 + i * mw * 0.2, my + (3 if i % 2 else -3)) for i in range(7)]
-        cv.line(pts, lipcol, 2.8)
+def _hp_flight_cap(cv, s, t):
+    with cv.at(14, -334, 1, rot=10):
+        cv.poly([(-40, 8), (-34, -18), (36, -18), (44, 8)], fill=(40, 70, 140), ow=5)
+        cv.line([(-38, 0), (40, 0)], P.GOLD, 4, round_caps=False)
 
 
-def _gap_teeth(cv, R, top, mw):
-    """Ti's signature: front teeth missing (a gap in the middle of the top row)."""
-    th = R * 0.08
-    cv.rect(-mw * 0.55, top, -R * 0.07, top + th, fill=P.TEETH, outline=None)
-    cv.rect(R * 0.07, top, mw * 0.55, top + th, fill=P.TEETH, outline=None)
+def _hp_crown(cv, s, t):
+    y = -330
+    cv.poly([(-36, y), (-42, y - 36), (-18, y - 16), (2, y - 44), (22, y - 16), (46, y - 36), (40, y)], fill=P.GOLD,
+            ow=5)
+    cv.circle(2, y - 44, 5, fill=P.ACCENT, ow=3)
 
 
-# ------------------------------------------------------------------ props
-def _hp_notebook_hat(cv, cy, R, s, t):
-    with cv.at(0, cy - R * 0.98, 1, rot=-8):
-        cv.poly([(-R * 0.95, 0), (0, -R * 0.55), (R * 0.95, 0)], fill=(70, 120, 200))   # open book tent
-        cv.line([(0, -R * 0.55), (0, -R * 0.05)], INK, 2)
-        cv.line([(-R * 0.6, -R * 0.12), (-R * 0.1, -R * 0.42)], P.WHITE, 2)
-
-
-def _hp_wig(cv, cy, R, s, t):
-    pts = [(-1.15, 0.25), (-1.2, -0.15), (-1.0, -0.6), (-0.6, -0.95), (-0.15, -1.1), (0.3, -1.05), (0.75, -0.85),
-           (1.05, -0.5), (1.2, -0.1), (1.15, 0.3), (-1.15, 0.65), (1.15, 0.7), (-1.05, 1.0), (1.05, 1.0)]
-    for i, (px, py) in enumerate(pts):
-        cv.circle(px * R, cy + py * R, R * (0.33 if i < 10 else 0.27), fill=P.WHITE, ow=2.4)
-
-
-def _hp_police_cap(cv, cy, R, s, t):
-    cv.rect(-R * 0.95, cy - R * 1.25, R * 0.95, cy - R * 0.62, fill=(50, 64, 110), radius=R * 0.25)
-    cv.ellipse(0, cy - R * 0.6, R * 1.05, R * 0.14, fill=INK, outline=None)
-    cv.circle(0, cy - R * 0.95, R * 0.16, fill=P.GOLD, ow=2.2)
-
-
-def _hp_flight_cap(cv, cy, R, s, t):
-    with cv.at(R * 0.2, cy - R * 0.95, 1, rot=12):
-        cv.rect(-R * 0.55, -R * 0.25, R * 0.55, R * 0.12, fill=(40, 70, 140), radius=6)
-        cv.line([(-R * 0.55, 0), (R * 0.55, 0)], P.GOLD, 3, round_caps=False)
-
-
-def _hp_crown(cv, cy, R, s, t):
-    y = cy - R * 0.95
-    cv.poly([(-R * 0.5, y), (-R * 0.55, y - R * 0.45), (-R * 0.25, y - R * 0.2), (0, y - R * 0.55),
-             (R * 0.25, y - R * 0.2), (R * 0.55, y - R * 0.45), (R * 0.5, y)], fill=P.GOLD)
+def _hp_non_la(cv, s, t):
+    """Conical hat (nón lá)."""
+    cv.poly([(2, -432)] + bezier((118, -290), (2, -276), (-114, -290), 10), fill=(238, 214, 156), ow=6)
+    for k in (0.4, 0.68):
+        y0 = -432 + 142 * k
+        cv.line([(2 - 116 * k, y0), (2 + 116 * k, y0)], (190, 160, 100), 3)
 
 
 HEAD_PROPS = {"notebook_hat": _hp_notebook_hat, "wig": _hp_wig, "police_cap": _hp_police_cap,
-              "flight_cap": _hp_flight_cap, "crown": _hp_crown}
+              "flight_cap": _hp_flight_cap, "crown": _hp_crown, "non_la": _hp_non_la}
+
+
+# ------------------------------------------------------------------ hand props (character pixels)
+def _hand(cv, h, s):
+    cv.circle(h[0], h[1], s["hand_r"], fill=s["skin"], ow=s["hand_ow"])
 
 
 def _p_phone(cv, h, side, s, t):
     x, y = h
     cv.rect(x - 9, y - 26, x + 9, y + 6, fill=INK, radius=4, ow=2)
     cv.rect(x - 6, y - 22, x + 6, y + 1, fill=(140, 210, 255), outline=None, radius=2)
-    cv.circle(x, y, s["hand_r"] * 0.9, fill=s["skin"])
+    _hand(cv, h, s)
 
 
 def _p_pointer(cv, h, side, s, t):
     x, y = h
-    cv.limb([(x - side * 10, y + 14), (x + side * 120, y - 70)], 5, P.WOOD)
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+    cv.limb([(x - side * 10, y + 14), (x + side * 120, y - 70)], 5, P.WOOD, ow=2.4)
+    _hand(cv, h, s)
 
 
 def _p_gavel(cv, h, side, s, t, swing=0.0):
     x, y = h
     with cv.at(x, y, 1, rot=-side * 30):
-        cv.limb([(0, 12), (0, -46)], 7, P.WOOD)
-        cv.rect(-20, -62, 20, -40, fill=P.WOOD_DARK, radius=5)
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+        cv.limb([(0, 12), (0, -46)], 7, P.WOOD, ow=2.4)
+        cv.rect(-20, -62, 20, -40, fill=P.WOOD_DARK, radius=5, ow=2.6)
+    _hand(cv, h, s)
 
 
 def _p_ruler(cv, h, side, s, t):
@@ -664,40 +812,40 @@ def _p_ruler(cv, h, side, s, t):
         cv.rect(-6, -90, 6, 14, fill=(240, 210, 110), radius=2, ow=2.6)
         for k in range(6):
             cv.line([(-6, -80 + k * 15), (0, -80 + k * 15)], INK, 1.6, round_caps=False)
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+    _hand(cv, h, s)
 
 
 def _p_stick(cv, h, side, s, t):
     x, y = h
-    cv.limb([(x - side * 8, y + 16), (x + side * 70, y - 110)], 5, (190, 150, 90))
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+    cv.limb([(x - side * 8, y + 16), (x + side * 70, y - 110)], 5, (190, 150, 90), ow=2.4)
+    _hand(cv, h, s)
 
 
 def _p_notebook(cv, h, side, s, t):
     x, y = h
     cv.rect(x - 16, y - 34, x + 16, y + 4, fill=(70, 120, 200), radius=3, ow=2.6)
     cv.rect(x - 10, y - 28, x + 8, y - 20, fill=P.WHITE, outline=None)
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+    _hand(cv, h, s)
 
 
 def _p_bowl(cv, h, side, s, t):
     x, y = h
-    cv.poly(ellipse_pts(x, y - 14, 22, 18, 0, 180, 12), fill=P.WHITE)
+    cv.poly(ellipse_pts(x, y - 14, 22, 18, 0, 180, 12), fill=P.WHITE, ow=2.6)
     cv.ellipse(x, y - 14, 22, 5, fill=P.WHITE, ow=2.2)
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+    _hand(cv, h, s)
 
 
 def _p_noodles(cv, h, side, s, t):
     x, y = h
-    cv.poly([(x - 18, y - 36), (x + 18, y - 36), (x + 13, y + 2), (x - 13, y + 2)], fill=(250, 240, 220))
+    cv.poly([(x - 18, y - 36), (x + 18, y - 36), (x + 13, y + 2), (x - 13, y + 2)], fill=(250, 240, 220), ow=2.6)
     cv.rect(x - 18, y - 30, x + 18, y - 20, fill=P.ACCENT, outline=None)
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+    _hand(cv, h, s)
 
 
 def _p_kite_string(cv, h, side, s, t):
     x, y = h
     cv.line([(x, y), (x + side * 160, y - 260)], (90, 80, 80), 1.5)
-    cv.circle(x, y, s["hand_r"], fill=s["skin"])
+    _hand(cv, h, s)
 
 
 HAND_PROPS = {"phone": _p_phone, "pointer": _p_pointer, "gavel": _p_gavel, "ruler": _p_ruler, "stick": _p_stick,
@@ -708,47 +856,46 @@ HAND_PROPS = {"phone": _p_phone, "pointer": _p_pointer, "gavel": _p_gavel, "rule
 def draw_dog(cv, x, y, scale=1.0, flip=False, pose="stand", t=0.0, color=(222, 168, 96), expression="happy",
              mouth_prop=None):
     """Side-view street dog facing right (flip=True faces left). (x,y) = ground under the belly.
-    pose: 'stand' | 'run' | 'sit' | 'wag' (stand + fast tail).  mouth_prop: None | 'notebook'."""
-    dark = tuple(int(c * 0.72) for c in color)
+    pose: 'stand' | 'run' | 'sit' | 'wag' (stand + fast tail).  mouth_prop: None | 'notebook'.
+    Same ink style as the people: flat colour, thick ink outline, stick legs, oval ink eye."""
+    dark = shade(color, 0.78)
     run = pose == "run"
     ph = t * 9.0 if run else 0.0
     bob = -abs(math.sin(ph)) * 8 if run else 0.0
     wag = math.sin(t * (18 if pose in ("wag", "sit") or run else 6)) * (16 if pose != "stand" else 8)
+    ow = 3.4
     with cv.at(x, y + bob, scale, flip=flip):
         sit = pose == "sit"
         body_y = -48 if not sit else -40
-        # tail
         tb = (-40, body_y - 8) if not sit else (-30, -22)
-        cv.limb(bezier(tb, (-62, body_y - 30 + wag * 0.3), (-58 + wag * 0.4, body_y - 52 + abs(wag) * 0.2), 8),
-                7, color)
-        # legs (far pair darker)
+        cv.line(bezier(tb, (-62, body_y - 30 + wag * 0.3), (-58 + wag * 0.4, body_y - 52 + abs(wag) * 0.2), 8),
+                INK, 6)
         legs = [(-26, 1), (24, 1), (-18, -1), (32, -1)] if not sit else [(-14, 1), (26, 1)]
         for i, (lx, k) in enumerate(legs):
             swing = math.sin(ph + i * 1.6) * 14 if run else 0
-            col = color if k > 0 else dark
             if sit and i == 0:
-                cv.ellipse(-16, -14, 24, 16, fill=color)
+                cv.ellipse(-16, -14, 24, 16, fill=color, ow=ow)
                 continue
-            cv.limb([(lx, body_y + 8), (lx + swing, -4)], 9, col)
-            cv.ellipse(lx + swing + 4, -3, 8, 4.5, fill=col)
-        # body
+            cv.line([(lx, body_y + 8), (lx + swing, -4)], INK, 6)
+            cv.ellipse(lx + swing + 4, -3, 8, 4.5, fill=INK, outline=None)
         if sit:
-            cv.poly([(-34, -6), (-30, -52), (8, -76), (30, -64), (22, -8)], fill=color)
+            cv.poly([(-34, -6), (-30, -52), (8, -76), (30, -64), (22, -8)], fill=color, ow=ow)
         else:
-            cv.ellipse(0, body_y, 50, 22, fill=color)
-            cv.ellipse(-4, body_y + 4, 22, 9, fill=tuple(min(255, c + 20) for c in color), outline=None)
-        # head
+            cv.ellipse(0, body_y, 50, 22, fill=color, ow=ow)
+            cv.poly([(-50, body_y), (-26, body_y - 20), (-10, body_y + 21), (-44, body_y + 12)], fill=dark,
+                    outline=None)
+            cv.ellipse(0, body_y, 50, 22, fill=None, ow=ow)
         hx, hy = (44, body_y - 26) if not sit else (26, -86)
-        cv.poly([(hx + 2, hy - 18), (hx - 14, hy + 8), (hx - 4, hy + 14)], fill=dark)  # ear (back)
-        cv.circle(hx, hy, 22, fill=color)
-        cv.ellipse(hx + 22, hy + 8, 16, 11, fill=tuple(min(255, c + 25) for c in color))
-        cv.circle(hx + 36, hy + 3, 5, fill=INK, outline=None)
-        cv.poly([(hx - 8, hy - 18), (hx - 26, hy + 2), (hx - 12, hy + 10)], fill=dark)   # ear (front, floppy)
-        cv.circle(hx + 8, hy - 5, 4.6, fill=INK, outline=None)
-        cv.circle(hx + 6.6, hy - 6.6, 1.5, fill=P.WHITE, outline=None)
+        cv.poly([(hx + 2, hy - 18), (hx - 14, hy + 8), (hx - 4, hy + 14)], fill=dark, ow=ow)
+        cv.circle(hx, hy, 22, fill=color, ow=ow)
+        cv.ellipse(hx + 22, hy + 8, 16, 11, fill=color, ow=ow)
+        cv.ellipse(hx + 36, hy + 3, 5, 4, fill=INK, outline=None)
+        cv.poly([(hx - 8, hy - 18), (hx - 26, hy + 2), (hx - 12, hy + 10)], fill=dark, ow=ow)
+        cv.ellipse(hx + 8, hy - 5, 3.2, 4.6, fill=INK, outline=None)
+        cv.line([(hx + 3, hy - 13), (hx + 13, hy - 14)], INK, 3)
         if expression == "happy" and mouth_prop is None:
-            cv.curve((hx + 16, hy + 16), (hx + 24, hy + 22), (hx + 32, hy + 15), INK, 2.4)
-            cv.ellipse(hx + 24, hy + 24, 5, 8, fill=P.TONGUE, ow=2)
+            cv.curve((hx + 16, hy + 16), (hx + 24, hy + 22), (hx + 32, hy + 15), INK, 2.6)
+            cv.ellipse(hx + 24, hy + 24, 5, 8, fill=MOUTH_RED, ow=2.4)
         if mouth_prop == "notebook":
             with cv.at(hx + 30, hy + 20, 1, rot=12):
                 cv.rect(-18, -10, 18, 12, fill=(70, 120, 200), ow=2.6)
@@ -760,10 +907,10 @@ def draw_dog(cv, x, y, scale=1.0, flip=False, pose="stand", t=0.0, color=(222, 1
 # ------------------------------------------------------------------ vendor extras
 def draw_vendor(cv, x, y, scale=1.0, flip=False, t=0.0, walking=True, steam=True):
     """Street vendor woman (nón lá) carrying a gánh (shoulder pole with two baskets)."""
-    pose = "walk" if walking else "stand"
+    pose = "walk_carry" if walking else "carry"
     a = draw_character(cv, "VENDOR", x, y, scale, pose=pose, t=t, flip=flip)
-    s = SPECS["VENDOR"]
-    sh_y = y - (s["leg"] + s["torso_h"] - 6) * scale
+    g = _geom(char_spec("VENDOR"))
+    sh_y = y + (g["u"] + SH_Y - 4) * g["K"] * scale
     sway = math.sin(t * 2.2 * 2 * math.pi) * 3 if walking else 0
     with cv.at(x, sh_y, scale, flip=flip):
         pole = [(-150, 6 + sway), (150, 6 - sway)]

@@ -131,14 +131,22 @@ anchors = draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=
   `SPEAKER_TO_CHAR` maps script speaker names to these keys.
 * `(x, y)` is the ground point between the feet. For `sit*` poses it is the seat, and the feet hang
   about 0.9 × leg length below it.
-* Sizes at scale 1: kids are about 175 px tall (Hai is taller, with stork legs). Adults are about 420 px,
-  roughly 2x a kid, so put them low or off-frame to get the "only see up to the chest" framing.
+* Style: the project's stick-figure model ("người que", same shapes as the SVG engine
+  `video/ve-di-tuoi-tho/engine.js` on the darwin branch): egg head, solid oval eyes with thick brows,
+  a small tunic-shaped shirt, ink stick arms/legs, round hands without fingers, oval ink shoes. Shapes
+  are drawn in engine units and scaled by `k * 0.42` px; outlines are ink `#1D1D1F`-ish `INK`.
+* Facing: the face is in 3/4 view looking right; `flip=True` mirrors the figure, and the face also
+  turns toward `look` when `|look[0]| >= 0.25`.
+* Sizes at scale 1 (to the top of the hair): Mui 182, Hai 212 (stork legs), Ti 171, Tun 167, KID 163,
+  His Kid 254; adults Old Mui 422, Mom 439, Dad 448, Teacher 435, Vendor 451 (with hat). Adults are
+  roughly 2.4x a kid, so put them low or off-frame to get the "only see up to the chest" framing.
 * `expression`: `neutral, bored, deadpan, happy, smug, shocked, angry, sad, scared, proud`. Each
   character has a default: Mui bored, Hai smug, Tun and Ti happy.
 * `mouth_open`: 0..1. Pass `ctx.mouth(SPEAKER, t)`.
 * `pose`: `stand, wave, point, point_up, hands_hip, arms_up, shrug, hold, hold_both, present,
   cover_head, chin_on_hand, salute, fist_up, facepalm, walk, run, sit, sit_<armpose>` (for example
-  `sit_chin_on_hand`). `walk`/`run` animate from `t`.
+  `sit_chin_on_hand`). `walk`/`run` animate from `t`. Extra engine poses: `ok`, `cross_arms`
+  (khoanh-tay), `carry` (both hands on a shoulder pole), `walk_carry`.
 * `look=(lx, ly)`: pupil direction, -1..1. `blink=None` gives automatic blinking. `nod` offsets the
   head (use `math.sin(t*8)*4` for Tun's nodding). `lean` is degrees.
 * `outfit`: `uniform` (white shirt and red scarf), `police`, `flight`, `principal`, `snow_white`,
@@ -146,11 +154,17 @@ anchors = draw_character(cv, name, x, y, scale=1.0, expression=None, mouth_open=
 * `props`: head props `notebook_hat, wig, police_cap, flight_cap, crown`; hand props `phone, pointer,
   gavel, ruler, stick, notebook, bowl, noodles, kite_string` (right hand by default; add `"@L"` for the
   left hand, as in `"phone@L"`).
-* returns screen-space anchors: `head, head_r, mouth, hand_r, hand_l, top, chest, feet`. Use them for
+* returns screen-space anchors: `head, head_r, mouth, hand_r, hand_l, top, chest, feet` (plus
+  `shoulder`). Use them for
   speech bubbles, custom props and labels. Inside a camera, convert them back with
   `world = (screen - (640, 360)) / zoom + cam`.
-* Signature features: Ti always shows her two missing front teeth when smiling or talking. Hai has a
-  band-aid and spiky hair. Tun has huge eyes. Old Mui has Mui's bowl cut gone grey, plus a mustache and belly.
+* Signature features: Mui has the yellow shirt and the brown tuft; his default "bored" face has heavy
+  half-lidded eyes. Ti (pink shirt, bob, red bow) always shows her two missing front teeth when smiling
+  or talking. Hai (brown shirt, black short hair, band-aid on the far cheek) has 1.75x stork legs. Tun
+  (lilac shirt, black topknot) has slightly bigger eyes. Old Mui is grown Mui: same hair colour combed
+  neat with grey temples, eye bags, grey shirt, navy tie, a small belly (`mustache=True` via `variant`
+  if wanted). Legacy `variant` keys (`head_r`, `leg`, `torso_h`, `torso_w`, `hair="bowl"` …) are
+  translated to the new proportions.
 
 `draw_dog(cv, x, y, scale, flip=False, pose="stand"|"run"|"sit"|"wag", t, color, expression, mouth_prop=None|"notebook")`
 draws a side-view street dog facing right.

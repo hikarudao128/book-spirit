@@ -21,9 +21,9 @@ def blink(t, seed=0, period=3.7):
 # The four friends forty years on. Each keeps a signature feature from the kid design.
 GROWN = {
     "MUI": ("OLD_MUI", dict(shirt=(200, 206, 214), pants=(60, 60, 70), tie=True)),
-    "HAI": ("DAD", dict(hair="spiky", glasses=False, bandaid=True, torso_w=84, leg=200, torso_h=150,
+    "HAI": ("DAD", dict(hair="short", glasses=False, bandaid=True, torso_w=84, leg=200, torso_h=150,
                         shirt=(150, 190, 140), pants=(120, 96, 70), tie=True, head_r=50, hair_color=(70, 64, 66))),
-    "TUN": ("MOM", dict(hair="bob", eye_scale=1.3, hair_color=(64, 40, 30), shirt=(240, 200, 90),
+    "TUN": ("MOM", dict(hair="topknot", eye_scale=1.2, hair_color=(64, 40, 30), shirt=(240, 200, 90),
                         pants=(70, 66, 74), lips=True)),
     "TI": ("MOM", dict(hair="ponytail_bow", missing_teeth=True, shirt=(236, 140, 160), pants=(60, 60, 80),
                        lips=True, glasses=True)),
