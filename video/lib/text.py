@@ -52,6 +52,44 @@ def fit_size(s, max_w, size, weight="bold", min_size=10):
     return size
 
 
+def text_ink_box(s, size, weight="bold"):
+    """Logical-px ink bounding box (x0, y0, x1, y1) of a single line drawn with anchor "mm" at (0, 0)."""
+    f = font(max(1, int(size * 4)), weight)
+    x0, y0, x1, y1 = f.getbbox(s, anchor="mm")
+    return x0 / 4.0, y0 / 4.0, x1 / 4.0, y1 / 4.0
+
+
+def rubber_stamp(cv, x, y, text, size=48, color=P.ACCENT, rot=-12, scale=1.0, fill=None, ow=6, pad=(22, 14),
+                 inner=False, radius=10, weight="black"):
+    """The one shared rubber-stamp / sticker: a bordered box sized from the MEASURED ink box of `text`
+    (+ pad), centred on the letters, with optional solid backing `fill` and an optional thin inner border.
+    Box, backing and letters share one transform, so they always move, scale and rotate together
+    (Canvas.text renders rotated text on its own RGBA layer). Multi-line text: separate lines with "\n"."""
+    if scale <= 0.01:
+        return
+    lines = text.split("\n")
+    lh = size * 1.12
+    boxes = [text_ink_box(ln, size, weight) for ln in lines]
+    w = max(b[2] - b[0] for b in boxes) + 2 * pad[0] + ow
+    top = boxes[0][1] - (len(lines) - 1) * lh / 2
+    bot = boxes[-1][3] + (len(lines) - 1) * lh / 2
+    h = (bot - top) + 2 * pad[1] + ow
+    cy = (top + bot) / 2                      # optical centre of the ink -> box centre
+    with cv.at(x, y, scale, rot=rot):
+        if fill is not None:
+            cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=fill, outline=None, radius=radius)
+        cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=None, outline=color, ow=ow, radius=radius)
+        if inner:
+            m = ow + 3
+            cv.rect(-w / 2 + m, -h / 2 + m, w / 2 - m, h / 2 - m, fill=None, outline=color, ow=max(1.6, ow * 0.4),
+                    radius=max(2, radius - m / 2))
+        for i, ln in enumerate(lines):
+            ly = (i - (len(lines) - 1) / 2) * lh - cy
+            bx = boxes[i]
+            cv.text(-(bx[0] + bx[2]) / 2, ly, ln, size, color, weight)
+    return w * scale, h * scale
+
+
 def wrapped(cv, x, y, s, size, max_w, fill=INK, weight="bold", line_h=1.18, anchor="mm"):
     """Draw wrapped, centred text block whose centre is (x,y)."""
     lines = wrap_text(s, size, max_w, weight)

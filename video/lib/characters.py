@@ -922,8 +922,8 @@ def dog_points(pose="stand", t=0.0):
     body = (cx, cy, rx, ry, rot), head = (hx, hy, r), back = top of the back, chest, rump."""
     run = pose == "run"
     if pose == "sit":
-        body = (4.0, -50.0, 35.0, 19.0, -56.0)
-        head = (30.0, -100.0, 20.0)
+        body = (8.0, -50.0, 34.0, 22.0, -56.0)
+        head = (34.0, -100.0, 20.0)
         back = (-6.0, -66.0)
         rump = (-14.0, -24.0)
         bob = 0.0
@@ -984,39 +984,37 @@ def draw_dog(cv, x, y, scale=1.0, flip=False, pose="stand", t=0.0, color=(222, 1
             cv.line(bezier(base, (base[0] - 18, base[1] + up * 2), tip, 12), INK, lw)
         # ---- far legs (behind the body)
         if sit:
-            _dog_leg(cv, (24, -50), (30, -4.5), 0, lw)
+            _dog_leg(cv, (28, -52), (34, -4.5), 0, lw)
+            _dog_leg(cv, (20, -48), (24, -4.5), 0, lw)     # near front leg, straight down from the chest
         else:
-            hip_y = by + 4
-            legs_far = [(-22, math.pi + 0.6), (34, 0.6)]
-            for lx, off in legs_far:
-                _dog_leg(cv, *_dog_leg_pts(lx, hip_y, ph + off, run), lw)
+            # all four legs start inside the body (it covers their tops, like the people's shirts)
+            hip_y = by + 6
+            for lx, off, front in [(-22, math.pi + 0.7, False), (34, 0.7, True), (-30, math.pi, False),
+                                   (26, 0.0, True)]:
+                _dog_leg(cv, *_dog_leg_pts(lx, hip_y, ph + off, run, front), lw)
         # ---- body
         if sit:
             with cv.at(bx, by, 1, rot=brot):
                 cv.ellipse(0, 0, brx, bry, fill=color, ow=ow)
             cv.circle(-14, -24, 24, fill=color, ow=ow)                 # haunch
-            cv.curve((-28, -36), (-14, -46), (2, -38), dark, 3)          # thigh crease
-            # near front leg, straight down from the chest; hind paw peeking out in front of the haunch
-            _dog_leg(cv, (14, -46), (18, -4.5), 0, lw)
-            cv.ellipse(9, -4, 8, 4.4, fill=INK, outline=None)
+            cv.ellipse(11, -4, 8, 4.4, fill=INK, outline=None)           # hind paw in front of the haunch
         else:
             with cv.at(bx, by, 1, rot=brot):
                 cv.ellipse(0, 0, brx, bry, fill=color, ow=ow)
                 cv.ellipse(-6, -6, 14, 8, fill=dark, outline=None)        # one flat patch on the back
-            hip_y = by + 4
-            for lx, off in [(-30, math.pi), (26, 0.0)]:
-                _dog_leg(cv, *_dog_leg_pts(lx, hip_y, ph + off, run), lw)
         # ---- head
         ear_rot = 18 + (abs(math.sin(ph)) * 30 if run else 0) + (14 if expression == "sad" else 0)
         cv.circle(hx, hy, hr, fill=color, ow=ow)
         jaw_open = 0
-        if mouth_prop == "notebook":
-            with cv.at(hx + 19, hy + 15, 1, rot=10):
-                cv.rect(-17, -11, 17, 11, fill=(70, 120, 200), ow=2.8, radius=2)
-                cv.line([(-12, -3), (8, -3)], P.WHITE, 2)
-                cv.line([(-12, 3), (4, 3)], (170, 190, 230), 2)
-                cv.poly([(10, -11), (17, -11), (17, -3)], fill=(240, 236, 220), ow=1.8)   # chewed corner
         cv.ellipse(hx + 17, hy + 6, 14, 9.5, fill=muzzle, ow=ow)       # snout
+        if mouth_prop == "notebook":
+            # held crosswise between the jaws: the notebook sits over the lower jaw, the upper jaw clamps it
+            with cv.at(hx + 21, hy + 19, 1, rot=6):
+                cv.rect(-22, -11, 22, 12, fill=(70, 120, 200), ow=3, radius=2)
+                cv.rect(-14, 1, 12, 7, fill=(240, 236, 220), outline=None)
+                cv.line([(-22, -11), (-22, 12)], INK, 4.5)                    # spine
+                cv.poly([(14, 12), (22, 12), (22, 4)], fill=(240, 236, 220), ow=1.8)   # chewed corner
+            cv.poly(ellipse_pts(hx + 17, hy + 5, 14, 8.5, 175, 365, 14), fill=muzzle, ow=ow)   # upper jaw
         cv.ellipse(hx + 30, hy + 2, 5.2, 4.2, fill=INK, outline=None)  # nose
         # eye + brow
         if expression == "surprised":
@@ -1051,16 +1049,17 @@ def draw_dog(cv, x, y, scale=1.0, flip=False, pose="stand", t=0.0, color=(222, 1
             "mouth": cv.to_screen(x + (-(hx + 19) if flip else hx + 19) * scale, y + (hy + 14) * scale)}
 
 
-def _dog_leg_pts(lx, hip_y, phase, run):
-    """(hip, paw, knee_dx) for a standing/running leg; run = gallop swing with a lifted paw."""
+def _dog_leg_pts(lx, hip_y, phase, run, front=True):
+    """(hip, paw, knee_dx) for a standing/running leg; run = gallop swing, the paw lifts and the leg folds
+    (front legs tuck the paw back, hind legs fold forward) while it swings forward."""
     L = -hip_y - 4.5
     if not run:
         return (lx, hip_y), (lx + 2, -4.5), 0
-    ang = math.sin(phase) * 0.55
-    lift = max(0.0, math.cos(phase)) * 9
-    px = lx + math.sin(ang) * L
+    ang = math.sin(phase) * 0.42
+    lift = max(0.0, math.cos(phase)) * 10
+    px = lx + math.sin(ang) * L - (lift * 0.6 if front else -lift * 0.3)
     py = -4.5 - lift
-    return (lx, hip_y), (px, py), -lift * 0.5
+    return (lx, hip_y), (px, py), (lift * 0.7 if front else -lift * 0.7)
 
 
 # ------------------------------------------------------------------ vendor extras

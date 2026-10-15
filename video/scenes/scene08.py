@@ -19,11 +19,11 @@ import math
 
 from lib import palette as P
 from lib.backgrounds import draw_alley, draw_gavel, draw_plastic_stool
-from lib.characters import draw_character, draw_dog
+from lib.characters import dog_points, draw_character, draw_dog
 from lib.core import INK, clamp, ease_in_out, ease_out, ease_out_back, lerp, lerp_color, pop, progress
 from lib.extra_s8_11 import arrow_head, blink, draw_bulb, draw_star_burst
 from lib.fx import shake
-from lib.text import label, speech_bubble, text_width
+from lib.text import label, rubber_stamp, speech_bubble, text_width
 
 NODE_ANG = (-90, 30, 150)
 NODE_TXT = ("KIDS HAVE IDEA", "ADULTS FIND OUT", "EVERYTHING BACK\nTO NORMAL")
@@ -255,12 +255,8 @@ def draw_card(cv, i, x, y, t, b):
         # result stamp
         rs = pop(t, res_t, 0.3) if i < 2 else pop(t, b["expect"], 0.3)
         if rs > 0.01:
-            with cv.at(tx + 196 if i < 2 else tx + 148, 54, rs, rot=-6):
-                txt = RESULT[i]
-                sz = 24 if i < 2 else 23
-                tw = text_width(txt, sz, "black") + 22
-                cv.rect(-tw / 2, -17, tw / 2, 17, fill=P.WHITE, outline=RES_COL[i], ow=3.5, radius=5)
-                cv.text(0, 1, txt, sz, RES_COL[i], "black")
+            rubber_stamp(cv, tx + 196 if i < 2 else tx + 148, 54, RESULT[i], size=24 if i < 2 else 23,
+                         color=RES_COL[i], rot=-6, scale=rs, fill=P.WHITE, ow=3.5, pad=(10, 7), radius=5)
 
 
 # ------------------------------------------------------------------ phase A / C
@@ -335,7 +331,7 @@ DOGS = [  # final x, y, scale, color, flip, from_side, pose
     (560, 728, 0.7, (120, 100, 90), False, -1, "wag"),
     (700, 742, 0.66, (232, 214, 186), True, 1, "wag"),
     (950, 735, 0.72, (60, 56, 60), True, 1, "sit"),     # beside Ti, not on her feet
-    (330, 735, 0.6, (222, 168, 96), False, -1, "wag"),
+    (245, 735, 0.6, (222, 168, 96), False, -1, "wag"),
     (455, 750, 0.58, (176, 120, 80), False, -1, "wag"),
 ]
 
@@ -349,18 +345,20 @@ def _dog_in(b, i):
 
 
 def scruffy_dog(cv, x, y, s, color, flip, pose, t, seed):
+    """A stray: the regular dog plus a dirt smudge and ink tufts on the back and the head, placed from the
+    dog's own pose layout so they stay on the body in every pose."""
     draw_dog(cv, x, y, s, flip=flip, pose=pose, t=t + seed, color=color)
     dark = lerp_color(color, INK, 0.35)
+    G = dog_points(pose, t + seed)
+    bx, by, brx, bry, rot = G["body"]
+    hx, hy, hr = G["head"]
     with cv.at(x, y, s, flip=flip):
-        if pose != "sit":
-            cv.ellipse(-12 + seed * 3 % 14, -56, 14, 9, fill=dark, outline=None)
-            for k in range(4):
-                bx = -30 + k * 14
-                cv.line([(bx, -68), (bx + 4, -78), (bx + 8, -69)], INK, 2.2)
-            cv.line([(36, -96), (42, -106), (47, -96)], INK, 2.2)
-        else:
-            cv.ellipse(0, -50, 10, 8, fill=dark, outline=None)
-            cv.line([(16, -106), (22, -116), (28, -106)], INK, 2.2)
+        with cv.at(bx, by, 1, rot=rot):
+            cv.ellipse(14 - (seed * 7) % 20, 6, 9, 5, fill=dark, outline=None)        # dirt smudge
+            for k in range(3):                                                    # tufts along the back
+                tx = -16 + k * 12
+                cv.line([(tx, -bry + 2), (tx + 3, -bry - 7), (tx + 7, -bry + 1)], INK, 2.2)
+        cv.line([(hx - 4, hy - hr + 2), (hx + 1, hy - hr - 8), (hx + 5, hy - hr + 1)], INK, 2.2)
 
 
 def phase_b(cv, t, b, ctx):
@@ -456,9 +454,8 @@ def phase_b(cv, t, b, ctx):
     # "NO." stamp
     ns = pop(t, b["no"], 0.25)
     if ns > 0.01:
-        with cv.at(400, 160, ns, rot=-8):
-            cv.rect(-110, -54, 110, 54, fill=P.WHITE, outline=P.ACCENT, ow=8, radius=10)
-            cv.text(0, 2, "NO.", 72, P.ACCENT, "black")
+        rubber_stamp(cv, 400, 160, "NO.", size=72, color=P.ACCENT, rot=-8, scale=ns, fill=P.WHITE, ow=8,
+                     pad=(30, 20))
 
 
 # ------------------------------------------------------------------ frame

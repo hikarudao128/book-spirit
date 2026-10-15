@@ -93,7 +93,7 @@ def render_frame(t, ctx):
             draw_kite(cv, 1290, lerp(GROUND - 120, 320, kp), 30, P.ACCENT, t, tail=4, seed=2, string_to=(1560, 900))
         # the dog by the empty step
         wag = t >= b["banana"] + 0.4
-        draw_dog(cv, DOG_X, GROUND + 50, 0.75, flip=True, pose="sit" if not wag else "wag", t=t if wag else 0.0,
+        draw_dog(cv, DOG_X, GROUND + 50, 0.75, flip=True, pose="sit", t=t if wag else 0.0,   # stays sat, tail wags
                  expression="happy" if wag else "neutral")
         mx = _mui_x(t, b)
         walking_mui = t < b["stop"] + 0.4
@@ -153,6 +153,6 @@ def _title(ctx, t, b):
         with cv.at(640, 440, ts, rot=-4):
             cv.rect(-80, -26, 80, 26, fill=(255, 248, 230), radius=5, ow=2.4, outline=(250, 244, 228))
             cv.line([(40, -22), (40, 22)], (200, 120, 100), 2)
-            cv.text(-18, 1, "VÉ", 24, P.ACCENT, "black")
+            cv.text(-20, 1, "TICKET", 22, P.ACCENT, "black")
             cv.text(60, 1, "★", 18, P.ACCENT, "bold")
     return cv.finish()

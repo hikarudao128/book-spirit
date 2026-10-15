@@ -23,7 +23,7 @@ from lib.backgrounds import draw_book_cover
 from lib.characters import draw_character
 from lib.core import INK, clamp, ease_in, ease_in_out, ease_out, ease_out_back, lerp, lerp_color, pop, progress
 from lib.extra_s8_11 import arrow_head, blink, draw_star_burst
-from lib.text import label, text_width
+from lib.text import label, rubber_stamp, text_width
 
 GOOD = (90, 160, 90)
 BAD = P.ACCENT
@@ -251,7 +251,7 @@ def gag_attacked(cv, t, b):
             with cv.at(bx + 4 + 60 * fall, by - 26 + 420 * fall, 1, rot=-4 + 120 * fall):   # the book
                 cv.rect(-46, -34, 46, 32, fill=(250, 222, 120), radius=4, ow=3)
                 cv.rect(-46, -34, -38, 32, fill=(230, 180, 70), radius=2, ow=2.4)
-                cv.text(4, -8, "VÉ", 22, P.ACCENT, "black")
+                cv.text(4, -8, "TICKET", 15, P.ACCENT, "black")
             if fall <= 0:
                 cv.circle(bx, by, 0.82 * 11 + 1, fill=P.SKIN, ow=3.3)      # thumb over the book edge
         hl = a["hand_l"]
@@ -359,15 +359,14 @@ def draw_ticket(cv, t, b):
         cv.line([(150, -130), (150, 120)], (200, 120, 100), 3)
         for yy in range(-120, 130, 22):
             cv.circle(150, yy, 4, fill=P.CARD_BG, outline=None)
-        cv.text(-80, -60, "VÉ", 80, P.ACCENT, "black")
-        cv.text(-80, 30, "ĐI TUỔI THƠ", 40, INK, "black")
-        cv.text(-80, 80, "1 × CHILDHOOD", 22, (120, 110, 120), "extrabold")
+        cv.text(-80, -60, "TICKET", 80, P.ACCENT, "black")
+        cv.text(-80, 30, "TO CHILDHOOD", 40, INK, "black")
+        cv.text(-80, 80, "ADMIT ONE", 22, (120, 110, 120), "extrabold")
         cv.text(225, 0, "★", 60, P.ACCENT, "bold")
     ss = pop(t, b["ticket"], 0.25) * (1 - out)
     if ss > 0.01:
-        with cv.at(900, 470, ss, rot=-12):
-            cv.rect(-150, -46, 150, 46, fill=P.WHITE, outline=P.ACCENT2, ow=7, radius=10)
-            cv.text(0, 2, "WORTH IT?", 46, P.ACCENT2, "black")
+        rubber_stamp(cv, 900, 470, "WORTH IT?", size=46, color=P.ACCENT2, rot=-12, scale=ss, fill=P.WHITE, ow=7,
+                     pad=(24, 16))
 
 
 def draw_who(cv, t, b):

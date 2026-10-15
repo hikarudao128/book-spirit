@@ -282,6 +282,30 @@ class Canvas:
         sc = self.scale_now() * self.ss
         f = font(max(1, int(round(size * sc))), weight)
         sw = int(round(stroke * sc))
+        if self._rotated():
+            # Pillow can't draw rotated text: render it on its own RGBA layer centred on the anchor point,
+            # rotate that layer by the current transform's angle and composite it, so text turns together
+            # with the shapes drawn around it (labels, stamps, cards). Flips never mirror text.
+            a_, b_, c_, d_, e_, f_ = self.m
+            ang = math.degrees(math.atan2(-b_, e_)) if e_ != 0 or b_ != 0 else 0.0
+            probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+            kw = dict(font=f, anchor=anchor, stroke_width=sw)
+            if "\n" in s:
+                bb = probe.multiline_textbbox((0, 0), s, spacing=int(spacing * sc), align=align, **kw)
+            else:
+                bb = probe.textbbox((0, 0), s, **kw)
+            R = int(math.ceil(max(math.hypot(px, py) for px in (bb[0], bb[2]) for py in (bb[1], bb[3])))) + 4
+            layer = Image.new("RGBA", (2 * R, 2 * R), (0, 0, 0, 0))
+            ld = ImageDraw.Draw(layer)
+            col = tuple(fill[:3]) + (255,) if isinstance(fill, tuple) else fill
+            if "\n" in s:
+                ld.multiline_text((R, R), s, fill=col, stroke_fill=stroke_fill, spacing=int(spacing * sc),
+                                  align=align, **kw)
+            else:
+                ld.text((R, R), s, fill=col, stroke_fill=stroke_fill, **kw)
+            layer = layer.rotate(-ang, resample=Image.BICUBIC, center=(R, R))
+            self.img.paste(layer, (int(round(X - R)), int(round(Y - R))), layer)
+            return
         if "\n" in s:
             self.d.multiline_text((X, Y), s, font=f, fill=fill, anchor=anchor, stroke_width=sw,
                                   stroke_fill=stroke_fill, spacing=int(spacing * sc), align=align)

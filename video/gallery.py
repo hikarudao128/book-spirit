@@ -73,7 +73,7 @@ def main():
     save(cv, "outfits_props")
 
     for name, fn in (("classroom", lambda c: (draw_classroom(c, 1.0, ["REPEAT AFTER ME:", "2 x 2 = 4"],
-                                                             "BÀI HỌC"), draw_desks(c, 600))),
+                                                             "LESSON"), draw_desks(c, 600))),
                      ("dining", lambda c: (draw_dining_room(c), draw_dinner_table(c, 640, 520))),
                      ("courtroom", lambda c: (draw_courtroom(c), draw_gavel(c, 700, 360, -20))),
                      ("kitchen", lambda c: draw_kitchen(c)),

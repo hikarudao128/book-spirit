@@ -480,14 +480,15 @@ def draw_kitchen(cv, t=0.0, night=True):
 
 # ------------------------------------------------------------------ book cover
 def draw_book_cover(cv, cx=640, cy=360, w=300, h=440, rot=0.0, scale=1.0, show_english=True):
-    """Stylised cover of 'Cho tôi xin một vé đi tuổi thơ' (Nguyễn Nhật Ánh)."""
+    """Stylised cover of 'Cho tôi xin một vé đi tuổi thơ' (Nguyễn Nhật Ánh), shown with its English title.
+    show_english: adds the English-edition title line at the bottom."""
     from .text import fit_size, wrap_text
     with cv.at(cx, cy, scale, rot=rot):
         # shadow + spine
         cv.rect(-w / 2 + 10, -h / 2 + 12, w / 2 + 10, h / 2 + 12, fill=INK, outline=None, radius=8)
         cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=(250, 222, 120), ow=4, radius=8)
         cv.rect(-w / 2, -h / 2, -w / 2 + 18, h / 2, fill=(230, 180, 70), ow=3, radius=4)
-        title = "Cho tôi xin một vé đi tuổi thơ"
+        title = "Give Me a Ticket to Childhood"
         tsize = 30 * w / 300
         lines = wrap_text(title, tsize, w - 70, "black")
         # illustration window below the title block: sky, sun, ticket, kite
@@ -496,20 +497,20 @@ def draw_book_cover(cv, cx=640, cy=360, w=300, h=440, rot=0.0, scale=1.0, show_e
         cv.circle(ix1 - 36, iy0 + 34, 18, fill=P.SUN, ow=2.6)
         cv.rect(ix0 + 2, iy1 - 34, ix1 - 2, iy1 - 2, fill=P.GRASS, outline=None)
         cv.line([(ix0, iy1 - 34), (ix1, iy1 - 34)], INK, 2.6)
+        # tiny kite (behind the ticket, so it never covers the TICKET word)
+        draw_kite(cv, ix0 + 30, iy0 + 30, 14, P.ACCENT, 0, tail=2)
         # ticket
         tx, ty = (ix0 + ix1) / 2, iy1 - 74
         with cv.at(tx, ty, 1, rot=-8):
             cv.rect(-70, -28, 70, 28, fill=(255, 250, 236), ow=3, radius=4)
             cv.line([(30, -24), (30, 24)], (200, 120, 100), 2)
-            cv.text(-18, 0, "VÉ", 24, P.ACCENT, "black")
+            cv.text(-20, 0, "TICKET", 21, P.ACCENT, "black")
             cv.text(50, 0, "★", 18, P.ACCENT, "bold")
-        # tiny kite
-        draw_kite(cv, ix0 + 46, iy0 + 44, 16, P.ACCENT, 0, tail=2)
         # title
         for i, ln in enumerate(lines):
             cv.text(9, -h / 2 + 38 + i * tsize * 1.13, ln, tsize, INK, "black")
-        cv.text(9, -h / 2 + 30 + len(lines) * tsize * 1.13 + 6, "NGUYỄN NHẬT ÁNH", 16 * w / 300, P.ACCENT,
+        cv.text(9, -h / 2 + 30 + len(lines) * tsize * 1.13 + 6, "NGUYEN NHAT ANH", 16 * w / 300, P.ACCENT,
                 "extrabold")
         if show_english:
-            s = fit_size("Give Me a Ticket to Childhood", w - 60, 18, "bolditalic")
-            cv.text(9, h / 2 - 40, "Give Me a Ticket to Childhood", s, INK, "bolditalic")
+            s = fit_size("English edition: Ticket to Childhood", w - 60, 18, "bolditalic")
+            cv.text(9, h / 2 - 40, "English edition: Ticket to Childhood", s, INK, "bolditalic")

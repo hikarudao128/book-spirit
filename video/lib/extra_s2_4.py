@@ -15,7 +15,7 @@ from PIL import Image
 
 from . import palette as P
 from .core import INK, Canvas, clamp, ease_out, ease_out_back, ellipse_pts, lerp, lerp_color, progress
-from .text import text_width
+from .text import rubber_stamp, text_width
 
 SOFT = (70, 60, 66)
 
@@ -241,7 +241,7 @@ def draw_school_gate(cv, x, ground):
         cv.rect(x + side * 300 - 34, ground - 330, x + side * 300 + 34, ground, fill=(236, 214, 150), ow=3.4)
         cv.rect(x + side * 300 - 44, ground - 350, x + side * 300 + 44, ground - 326, fill=P.ROOF, ow=3)
     cv.rect(x - 280, ground - 320, x + 280, ground - 250, fill=(40, 90, 170), ow=3.4, radius=6)
-    cv.text(x, ground - 285, "TRƯỜNG TIỂU HỌC", 36, P.HIGHLIGHT, "black")
+    cv.text(x, ground - 285, "PRIMARY SCHOOL", 36, P.HIGHLIGHT, "black")
     # gate bars
     for k in range(9):
         xx = x - 250 + k * 62
@@ -344,16 +344,9 @@ def badge(cv, x, y, s, text, size=70, fill=P.ACCENT, ink=P.WHITE, r=56):
 
 
 def stamp(cv, x, y, text, s=1.0, rot=-12, color=P.ACCENT, size=48, fill=None):
-    """Rubber-stamp text box (red outline + red letters); fill=colour gives it a solid backing."""
-    if s <= 0.01:
-        return
-    w = text_width(text, size, "black") + 50
-    h = size * 1.4
-    with cv.at(x, y, s, rot=rot):
-        if fill is not None:
-            cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=fill, outline=None, radius=10)
-        cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=None, outline=color, ow=7, radius=10)
-        cv.text(0, 2, text, size, color, "black")
+    """Rubber-stamp text box (red outline + red letters); fill=colour gives it a solid backing.
+    Thin wrapper over text.rubber_stamp (box measured from the text, box + text rotate as one unit)."""
+    rubber_stamp(cv, x, y, text, size=size, color=color, rot=rot, scale=s, fill=fill, ow=7, pad=(22, 14))
 
 
 def chewed_notebook(cv, x, y, s=1.0, rot=-8):
@@ -394,14 +387,18 @@ def icon_hat(cv, x, y, s=1.0):
 
 
 def icon_dog(cv, x, y, s=1.0):
-    with cv.at(x, y, s):
-        col = (222, 168, 96)
-        cv.poly([(-14, -30), (-34, -6), (-20, 4)], fill=(160, 120, 70))
-        cv.circle(0, 0, 30, fill=col)
-        cv.ellipse(22, 12, 20, 14, fill=(236, 196, 140))
-        cv.circle(40, 6, 6, fill=INK, outline=None)
-        cv.circle(8, -6, 5, fill=INK, outline=None)
-        cv.poly([(-6, -28), (-30, 0), (-12, 10)], fill=(160, 120, 70))
+    """Dog head icon, drawn like draw_dog's head (round head, muzzle + nose, dot eye + brow, floppy ear)."""
+    col = (222, 168, 96)
+    with cv.at(x, y, s * 1.35):
+        cv.circle(-4, 0, 22, fill=col, ow=3.4)
+        cv.ellipse(15, 7, 15, 10, fill=(240, 212, 170), ow=3.4)
+        cv.ellipse(28, 3, 5.5, 4.4, fill=INK, outline=None)
+        cv.ellipse(4, -4, 3.4, 4.6, fill=INK, outline=None)
+        cv.curve((-2, -12), (3, -16), (9, -13), INK, 3)
+        cv.curve((8, 12), (15, 17), (23, 12), INK, 2.4)
+        with cv.at(-14, -11, 1, rot=18):
+            cv.poly([(6, 0)] + ellipse_pts(0, 13, 8.5, 14, -20, 200, 16) + [(-6, 0)], fill=(170, 124, 70),
+                    ow=3)
 
 
 def icon_banana(cv, x, y, s=1.0):

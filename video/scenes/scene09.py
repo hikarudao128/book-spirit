@@ -31,7 +31,7 @@ from lib.characters import draw_character
 from lib.core import INK, Canvas, clamp, ease_in_out, ease_out, ease_out_back, lerp, lerp_color, pop, progress
 from lib.extra_s8_11 import (blink, draw_motorbike, draw_seated, draw_rails, draw_sign, draw_steam_puffs, draw_tower,
                              draw_train_car, sign_layout)
-from lib.text import label, name_tag, text_width
+from lib.text import label, name_tag, rubber_stamp, text_width
 
 STEP_X = 1100
 GROUND = 560
@@ -248,7 +248,7 @@ def _noodle_cup(cv, x, y, t, seed):
     cv.poly([(x - 26, y - 52), (x + 26, y - 52), (x + 19, y), (x - 19, y)], fill=(250, 240, 220))
     cv.rect(x - 25, y - 44, x + 25, y - 30, fill=P.ACCENT, outline=None)
     cv.poly([(x - 26, y - 52), (x + 26, y - 52), (x + 19, y), (x - 19, y)], fill=None)
-    cv.text(x, y - 37, "MÌ", 11, P.WHITE, "black")
+    cv.text(x, y - 37, "NOODLES", 8.5, P.WHITE, "black")
     cv.line([(x - 4, y - 50), (x + 22, y - 96)], P.WOOD_DARK, 3.4)
     cv.line([(x + 4, y - 50), (x + 30, y - 92)], P.WOOD_DARK, 3.4)
     for i in range(3):
@@ -419,9 +419,8 @@ def phase3(cv, t, b):
                        variant=var, blink=blink(t, i))
     es = pop(t, b["everyone"] + 0.2, 0.25)
     if es > 0.01:
-        with cv.at(1010, 330, es, rot=-10):
-            cv.rect(-150, -40, 150, 40, fill=P.WHITE, outline=P.ACCENT, ow=6, radius=8)
-            cv.text(0, 2, "= EVERYONE", 40, P.ACCENT, "black")
+        rubber_stamp(cv, 1010, 330, "= EVERYONE", size=40, color=P.ACCENT, rot=-10, scale=es, fill=P.WHITE, ow=6,
+                     pad=(22, 16), radius=8)
 
 
 # ================================================================== phase 4: train
@@ -439,7 +438,7 @@ def _booth(cv, t, b):
         cv.rect(-60, -200, 60, -110, fill=(70, 80, 100))                                   # empty window
         draw_plastic_stool(cv, 0, -112, P.PLASTIC_BLUE, 0.5)                               # nobody on it
         cv.rect(-70, -112, 70, -100, fill=P.WOOD, radius=3)                                # counter
-        cv.text(0, -238, "SOÁT VÉ", 20, P.WHITE, "black")
+        cv.text(0, -238, "TICKET CHECK", 18, P.WHITE, "black")
         cv.rect(-56, -84, 56, -54, fill=P.WHITE, ow=2.4, radius=4)
         cv.text(0, -69, "TICKETS", 15, INK, "black")
         # hook + cap on the side wall
@@ -502,7 +501,7 @@ def phase4(cv, t, b):
         draw_train_car(cv, tx - 330, RAIL_Y, 300, 150, (240, 180, 70), t if moving else 0,
                        inside=kids_in(["HAI", "MUI", None]))
         draw_train_car(cv, tx - 20, RAIL_Y, 300, 150, (230, 90, 70), t if moving else 0,
-                       inside=kids_in(["OLD_MUI"]), engine=True, sign="→ TUỔI THƠ")
+                       inside=kids_in(["OLD_MUI"]), engine=True, sign="→ CHILDHOOD")
         if moving:
             draw_steam_puffs(cv, tx + 30, RAIL_Y - 260, t)
         _booth(cv, t, b)

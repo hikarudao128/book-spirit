@@ -156,18 +156,15 @@ def draw_stick(cv, x, y, length=230, rot=0.0, color=(176, 136, 84), w=7):
 
 # ------------------------------------------------------------------ text-ish gags
 def stamp(cv, t, start, x, y, text, color=P.ACCENT, rot=-12, size=48, dur=0.16):
-    """A rubber stamp slamming down (scale 2.2 -> 1). Draws nothing before `start`."""
+    """A rubber stamp slamming down (scale 2.2 -> 1). Draws nothing before `start`.
+    Double border (outer + thin inner), sized from the measured text via text.rubber_stamp."""
     p = progress(t, start, dur)
     if p <= 0:
         return
     s = lerp(2.2, 1.0, ease_out(p))
-    from .text import text_width
-    w = text_width(text, size, "black") + 44
-    h = size + 30
-    with cv.at(x, y, s, rot=rot):
-        cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=None, outline=color, ow=6, radius=8)
-        cv.rect(-w / 2 + 9, -h / 2 + 9, w / 2 - 9, h / 2 - 9, fill=None, outline=color, ow=2.4, radius=4)
-        cv.text(0, 2, text, size, color, "black")
+    from .text import rubber_stamp
+    rubber_stamp(cv, x, y, text, size=size, color=color, rot=rot, scale=s, ow=6, pad=(24, 18), inner=True,
+                 radius=8)
 
 
 def sparkle(cv, x, y, r, t, start, color=P.HIGHLIGHT):

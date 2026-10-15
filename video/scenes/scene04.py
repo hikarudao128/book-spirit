@@ -132,7 +132,8 @@ def _board(cv, t, b):
             cv.text(370, y, "=", 60 * s2, INK, "black")
             cv.text(560, y + 2, word, 52 * s2, P.ACCENT, "black")
             ic2(cv, 790, y, 0.65 * s2)
-    stamp(cv, 520, 260, "ADULTS: NOT INFORMED", pop(t, b["adults2"] + 0.1, 0.2), rot=-6, size=52,
+    # slammed diagonally across the lower-right of the board (inside it), leaving the BANANA row readable
+    stamp(cv, 600, 334, "ADULTS: NOT INFORMED", pop(t, b["adults2"] + 0.1, 0.2), rot=-6, size=32,
           fill=P.WHITE)
 
 

@@ -94,7 +94,7 @@ def draw_tower(cv, x, w, h, gy, color, seed=0, lit=0.0):
         cv.circle(x + w * 0.7, top - 52, 4, fill=P.ACCENT, outline=None)
 
 
-SIGN_TEXT = ["PHỞ", "CƠM", "CAFE", "4G", "SALE", "SPA", "BÁNH MÌ", "KARAOKE", "SHOP", "TRÀ SỮA", "HOTEL", "ATM",
+SIGN_TEXT = ["NOODLES", "RICE", "CAFE", "4G", "SALE", "SPA", "SANDWICH", "KARAOKE", "SHOP", "MILK TEA", "HOTEL", "ATM",
              "GYM", "NAIL", "WIFI"]
 SIGN_COLS = [(230, 70, 60), (40, 120, 200), (250, 190, 40), (60, 160, 90), (200, 60, 150), (240, 120, 40),
              (40, 40, 60)]
