@@ -1,11 +1,13 @@
 """Scene 8 - The Rules of Childhood.
 
 Beats (all from ctx):
-  "So, here's how childhood works."  the three-node cycle diagram builds on the left
-  "Renaming everything went badly." / "Becoming adults went worse." / "Suing your parents went..."
+  "So here's how childhood works."  the three-node cycle diagram builds on the left
+  "Renaming everything went badly." / "Becoming adults went worse." /
+  "And suing your parents went exactly how you'd expect."
       three thumbnail cards pop on the right, each with a HOW IT WENT meter that escalates:
-      BADLY -> WORSE -> the third meter overflows its box, the card shakes, "...AS EXPECTED" stamp
-  "And then they also tried raising stray dogs ..."  whip-pan to the alley: scruffy dogs pile in
+      BADLY -> WORSE -> the third meter overflows on "went exactly", the gavel slams and the
+      "...AS EXPECTED" stamp lands on "expect"
+  "Then they tried raising stray dogs as house pets."  whip-pan to the alley: scruffy dogs pile in
       around the kids, a puppy lands on Mui's head
   HAI "Can we keep them?"  pleading sparkly eyes
   (gap) Dad stomps in, giant.  DAD "No."  deadpan hold, kids deflate
@@ -35,7 +37,7 @@ def beats(ctx):
                   ctx.find_word(L[0].id, "works"))
     b["cards"] = (L[1].start, L[2].start, L[3].start)
     b["results"] = (ctx.find_word(L[1].id, "badly"), ctx.find_word(L[2].id, "worse"),
-                    ctx.find_word(L[3].id, "about"))
+                    ctx.find_word(L[3].id, "expect"))
     b["overflow"] = ctx.find_word(L[3].id, "went")
     b["expect"] = ctx.find_word(L[3].id, "expect")
     b["cut1"] = L[4].start - 0.25                       # whip to the dogs
@@ -44,8 +46,8 @@ def beats(ctx):
     b["plead"] = L[5].start - 0.2
     b["dad_in"] = L[5].end + 0.25
     b["no"] = L[6].start
-    b["deflate"] = L[6].end + 0.15
-    b["cut2"] = L[7].start - 0.45                       # whip back to the diagram
+    b["deflate"] = L[6].end + 0.05
+    b["cut2"] = L[7].start - 0.35                       # whip back to the diagram
     b["idea"], b["find"], b["normal"], b["repeat"] = L[7].start, L[8].start, L[9].start, L[10].start
     return b
 
@@ -253,9 +255,9 @@ def draw_card(cv, i, x, y, t, b):
         # result stamp
         rs = pop(t, res_t, 0.3) if i < 2 else pop(t, b["expect"], 0.3)
         if rs > 0.01:
-            with cv.at(tx + 196 if i < 2 else tx + 150, 58, rs, rot=-6):
+            with cv.at(tx + 196 if i < 2 else tx + 148, 54, rs, rot=-6):
                 txt = RESULT[i]
-                sz = 24 if i < 2 else 20
+                sz = 24 if i < 2 else 23
                 tw = text_width(txt, sz, "black") + 22
                 cv.rect(-tw / 2, -17, tw / 2, 17, fill=P.WHITE, outline=RES_COL[i], ow=3.5, radius=5)
                 cv.text(0, 1, txt, sz, RES_COL[i], "black")
@@ -273,8 +275,9 @@ def _paper(cv):
 def phase_a(cv, t, b):
     _paper(cv)
     shows = [pop(t, b["nodes"][i] - 0.05, 0.4) for i in range(3)]
-    arrows = [ease_out(progress(t, b["nodes"][i] + 0.15, 0.5)) for i in range(3)]
-    arrows[2] = ease_out(progress(t, b["nodes"][2] + 0.3, 0.5))
+    # each arrow grows into the next node as that node pops (never ahead of it); the last closes the loop
+    arrows = [ease_out(progress(t, b["nodes"][1], 0.35)), ease_out(progress(t, b["nodes"][2], 0.35)),
+              ease_out(progress(t, b["nodes"][2] + 0.3, 0.5))]
     draw_cycle(cv, t, b, 345, 360, 185, shows, arrows)
     hs = pop(t, b["cards"][0] - 0.3, 0.35)
     if hs > 0.01:
@@ -286,8 +289,8 @@ def phase_a(cv, t, b):
 def phase_c(cv, t, b, ctx):
     _paper(cv)
     cx, cy, R = 640, 380, 240
-    TR = R - 135                    # Mui runs on an inner track
-    FOOT = 72                       # feet below the track point so the figure is centred on it
+    TR = R - 145                    # inner track; Mui's head stays clear of the top node's glow ring
+    FOOT = 84                       # feet below the track point so the figure is centred on it
     th = _theta(t, b)
     spd = _speed(t, b)
     # node glow when the runner is at / near it
@@ -331,7 +334,7 @@ DOGS = [  # final x, y, scale, color, flip, from_side, pose
     (380, 700, 0.62, (196, 150, 100), False, -1, "sit"),
     (560, 728, 0.7, (120, 100, 90), False, -1, "wag"),
     (700, 742, 0.66, (232, 214, 186), True, 1, "wag"),
-    (900, 735, 0.72, (60, 56, 60), True, 1, "sit"),
+    (950, 735, 0.72, (60, 56, 60), True, 1, "sit"),     # beside Ti, not on her feet
     (330, 735, 0.6, (222, 168, 96), False, -1, "wag"),
     (455, 750, 0.58, (176, 120, 80), False, -1, "wag"),
 ]
@@ -427,9 +430,9 @@ def phase_b(cv, t, b, ctx):
             scruffy_dog(cv, wx - 6, yy, 0.42 * squash, (240, 236, 226), False, "sit", t if pp >= 1 else 0, 9)
         # Dad, giant, from the right
         if dad_p > 0:
-            dx = lerp(1700, 1040, dad_p)
+            dx = lerp(1700, 1070, dad_p)
             walking = dad_p < 1
-            draw_character(cv, "DAD", dx, 700, 1.4, pose="walk" if walking else "hands_hip", t=t,
+            draw_character(cv, "DAD", dx, 700, 1.3, pose="walk" if walking else "hands_hip", t=t,
                            expression="neutral", mouth_open=ctx.mouth("DAD", t), look=(-0.7, 0.6),
                            blink=blink(t, 11) if t < b["no"] else 0)
     # pleading sparkles on the speaking kids (screen space)

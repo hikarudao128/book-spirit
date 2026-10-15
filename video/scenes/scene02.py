@@ -43,6 +43,7 @@ def beats(ctx):
     starts = [s - 0.05 for s in a + b]
     b_ = dict(
         intro=l1, list_start=starts[0], photos=starts,
+        evidence=ctx.find_word(l1.id, "evidence"),
         dash=ctx.find_word(l3.id, "—"),
         see=see.start - 0.12,                    # snap cut a hair before "See?"
         class_cut=worst.start - 0.25,
@@ -65,7 +66,7 @@ def beats(ctx):
 
 def audio_cues(ctx):
     b = beats(ctx)
-    cues = [{"sfx": "pop", "start": b["intro"].start + 0.3, "gain": 0.25}]
+    cues = [{"sfx": "pop", "start": b["evidence"], "gain": 0.25}]
     for i, s in enumerate(b["photos"]):
         cues.append({"sfx": "shutter", "start": s, "gain": 0.32 if i else 0.4})
     cues += [
@@ -279,7 +280,7 @@ def render_montage(t, ctx, b, cv):
             cv.text(0, 20, "A DAY IN THE LIFE", 42, INK, "black")
             cv.text(0, 80, "OF MUI (AGE 8)", 42, INK, "black")
         pin(cv, 470, 162)
-        s = pop(t, b["intro"].start + 0.2, 0.35)
+        s = pop(t, b["evidence"] - 0.05, 0.35)
         draw_character(cv, "MUI", 1010, 690, 1.65, pose="point", props=("pointer",), flip=True,
                        expression="deadpan", mouth_open=0, t=t, look=(-0.5, 0) if t < b["intro"].end else (0, 0))
         label(cv, 1010, 160, "EVIDENCE", 30, bg=P.HIGHLIGHT, scale=s, rot=5)
@@ -367,14 +368,16 @@ def render_class(t, ctx, b, cv):
     # chant tiles: every kid emits the same word, they land in perfect rows
     if cls.start - 0.1 <= t < b["drop"] + 1.2:
         fall = progress(t, b["drop"], 0.6)
+        # rows are laid out in screen space for the camera at the start of the chant, so they stay put
+        # (and inside the frame) when the camera later pushes in on the teacher
+        cam0 = _class_cam(cls.start, b)
         for row, (word, ws) in enumerate(zip(CHANT, b["cls_words"])):
             p = ease_out_back(progress(t, ws - 0.05, 0.35), 1.4)
             if p <= 0:
                 continue
             for i, (nm, x, kw) in enumerate(CLASS_KIDS):
                 mx, my = anchors[nm + str(i)]["mouth"]
-                tx, ty = cv_to_screen_x(x, cam), 180 + row * 64
-                ty = lerp(ty, ty, 1)
+                tx, ty = cv_to_screen_x(x, cam0), 180 + row * 64
                 px, py = lerp(mx, tx, p), lerp(my, ty, p)
                 rot = 0
                 if fall > 0:
@@ -433,7 +436,7 @@ def render_prison(t, ctx, b, cv):
             cv.rect(780, 660, 980, 712, fill=P.WHITE, ow=3)
             cv.text(880, 687, "INMATE #08", 26, INK, "black")
         # ceiling fan (useless, slow)
-        cx_, cy_ = 900, 0
+        cx_, cy_ = 860, 34
         cv.line([(cx_, -60), (cx_, cy_)], (70, 60, 66), 5)
         sp = t * lerp(4, 1.2, hot_p)
         for k in range(3):

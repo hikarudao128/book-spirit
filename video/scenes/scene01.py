@@ -60,6 +60,8 @@ def beats(ctx):
         look=ctx.find_word(l5.id, "boring"),   # turns to camera on "...boring."
         kite_fall=l5.end + 0.1,
     )
+    b["dog_in"] = b["food"] + 0.3
+    b["dog_sit"] = b["icons_out"] + 0.5
     b["zoom_end"] = b["cut"] + 0.55
     b["kite_land"] = b["kite_fall"] + 1.0
     return b
@@ -137,12 +139,24 @@ def render_frame(t, ctx):
     cx, cy, z = _camera(t, b)
     with cv.camera(cx, cy, z):
         draw_alley(cv, t, ground_y=GROUND)
-        seat_y, _ = _stoop(cv)
+        seat_y, lower_y = _stoop(cv)
 
         # kites rise on "Kites."
         rise = ease_out_back(progress(t, b["kites"] - 0.3, 1.1), 1.2)
         kid_hands = {}
-        # vendor walks behind the kids
+        # Mui on the step, bored. Turns to camera on "...boring."
+        look_p = ease_in_out(progress(t, b["look"], 0.7))
+        look = (lerp(-0.75, 0.0, look_p), lerp(0.35, 0.0, look_p))
+        expr = "deadpan" if look_p > 0.5 else "bored"
+        mouth = ctx.mouth("MUI", t)
+        # after the kite lands: one slow, unimpressed blink (no other reaction)
+        sb = progress(t, b["kite_land"] + 0.35, 0.45)
+        blink = math.sin(math.pi * sb) if 0 < sb < 1 else None
+        # faces left (toward the kids and the falling kite); sits on the upper tread, feet on the lower one
+        draw_character(cv, "MUI", STEP_X + 14, seat_y, 1.0, pose="sit_chin_on_hand", t=t, expression=expr,
+                       look=look, mouth_open=mouth, flip=True, blink=blink)
+
+        # vendor walks past (in front of the stoop, behind the kids)
         vx = lerp(-260, 1720, (t - 0.3) / (b["cut"] - 0.3))
         draw_vendor(cv, vx, GROUND + 52, 0.55, t=t, steam=t > b["food"] - 0.5)
 
@@ -167,22 +181,13 @@ def render_frame(t, ctx):
                 cv.curve((ex, ey), (mx, my), (wx, wy), STRING, 2.6)
                 draw_kite(cv, kx, ky, 44, col, t, tail=4, seed=i)
 
-        # Mui on the step, bored. Looks at camera on "Thank you, Mui."
-        look_p = ease_in_out(progress(t, b["look"], 0.7))
-        look = (lerp(-0.75, 0.0, look_p), lerp(0.35, 0.0, look_p))
-        expr = "deadpan" if look_p > 0.5 else "bored"
-        mouth = ctx.mouth("MUI", t)
-        # faces left (toward the kids and the falling kite); sits on the upper tread, feet on the lower one
-        draw_character(cv, "MUI", STEP_X + 14, seat_y, 1.0, pose="sit_chin_on_hand", t=t, expression=expr,
-                       look=look, mouth_open=mouth, flip=True)
-
         # the dog trots over and sits by the step; stops wagging when the music dies
-        dog_run = progress(t, 5.4, 4.6)
+        dog_run = progress(t, b["dog_in"], b["dog_sit"] - b["dog_in"])
         if dog_run < 1:
             dx = lerp(-120, 1222, dog_run)
-            if dog_run > 0.85:   # last stretch: up to the step
-                pass
-            draw_dog(cv, dx, GROUND + 150, 0.75, pose="run", t=t)
+            # last stretch: angle up to the step so it ends exactly where it sits (no jump)
+            dy = lerp(GROUND + 150, GROUND + 50, ease_in_out(progress(dog_run, 0.62, 0.38)))
+            draw_dog(cv, dx, dy, 0.75, pose="run", t=t)
         else:
             draw_dog(cv, 1222, GROUND + 50, 0.75, flip=True, pose="sit" if t < b["cut"] else "stand",
                      t=t if t < b["cut"] else 0.0, expression="happy" if t < b["cut"] else "neutral")
@@ -190,9 +195,10 @@ def render_frame(t, ctx):
         # a kite gives up and lands next to Mui
         kp = progress(t, b["kite_fall"], b["kite_land"] - b["kite_fall"])
         if kp > 0:
-            fx = lerp(STEP_X - 90, STEP_X - 150, kp) + math.sin(kp * 9) * 22 * (1 - kp)
-            fy = lerp(300, GROUND + 22, kp ** 1.6)
-            with cv.at(fx, fy, 1, rot=lerp(0, 75, kp)):
+            # flutters down from above the frame and flops onto the lower tread, right by his feet
+            fx = lerp(STEP_X - 150, STEP_X - 78, kp) + math.sin(kp * 9) * 22 * (1 - kp)
+            fy = lerp(300, lower_y - 16, kp ** 1.6)
+            with cv.at(fx, fy, 1, rot=lerp(0, -28, kp)):
                 draw_kite(cv, 0, 0, 26, P.ACCENT, 0 if kp >= 1 else t, tail=3, seed=1)
 
     # "No deadlines, no rent, no emails." icons (screen space)
