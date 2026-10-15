@@ -549,14 +549,28 @@ def render_frame(t, ctx):
         return img
     cv = ctx.canvas(P.CARD_BG)
     w = ease_in_out(progress(t, b["cut_train"] - 0.2, 0.4))
+    w0 = ease_in_out(progress(t, b["cut_book"] - 0.2, 0.4))
+    layers = []
+    if w0 < 1:                                   # the kitchen slides out as the book panel whips in
+
+        def kitchen(c):
+            a_ = phase2(c, t, b, ctx)["mui"]
+            _polaroid(c, t, b)
+            _boring_stamp(c, t, b, a_["chest"])
+        layers.append((-1400 * w0, kitchen))
     if w < 1:
-        with cv.at(-1400 * w, 0):
-            w0 = ease_in_out(progress(t, b["cut_book"] - 0.2, 0.4))
-            with cv.at(1400 * (1 - w0), 0):
-                phase3(cv, t, b)
+        layers.append((1400 * (1 - w0) - 1400 * w, lambda c: phase3(c, t, b)))
     if w > 0:
-        with cv.at(1400 * (1 - w), 0):
-            phase4(cv, t, b)
+        layers.append((1400 * (1 - w), lambda c: phase4(c, t, b)))
+    if len(layers) == 1 and abs(layers[0][0]) < 0.5:
+        layers[0][1](cv)
+    else:
+        # whips: each panel on its own canvas, pasted at its offset (the train world and the sunburst
+        # rays extend far past the frame and would otherwise bleed over the neighbouring panel)
+        for dx, fn in layers:
+            sub = ctx.canvas(P.CARD_BG)
+            fn(sub)
+            cv.paste(sub.img, dx, 0, scale=1.0 / ctx.ss)
     return cv.finish()
 
 

@@ -470,15 +470,22 @@ def render_frame(t, ctx):
         return ease_in_out(progress(t, t0 - 0.2, 0.4))
 
     w1, w2 = whip(b["cut1"]), whip(b["cut2"])
+    layers = []
     if w1 < 1:
-        with cv.at(-1400 * w1, 0):
-            phase_a(cv, t, b)
+        layers.append((-1400 * w1, lambda c: phase_a(c, t, b)))
     if w1 > 0 and w2 < 1:
-        with cv.at(1400 * (1 - w1) - 1400 * w2, 0):
-            phase_b(cv, t, b, ctx)
+        layers.append((1400 * (1 - w1) - 1400 * w2, lambda c: phase_b(c, t, b, ctx)))
     if w2 > 0:
-        with cv.at(1400 * (1 - w2), 0):
-            phase_c(cv, t, b, ctx)
+        layers.append((1400 * (1 - w2), lambda c: phase_c(c, t, b, ctx)))
+    if len(layers) == 1 and abs(layers[0][0]) < 0.5:
+        layers[0][1](cv)
+    else:
+        # during a whip each phase is drawn on its own canvas and pasted at its offset, so the alley's
+        # wide world (drawn far past the frame edges) cannot bleed over the neighbouring panel
+        for dx, fn in layers:
+            sub = ctx.canvas(P.CARD_BG)
+            fn(sub)
+            cv.paste(sub.img, dx, 0, scale=1.0 / ctx.ss)
     # speed lines during whips
     for w in (w1, w2):
         if 0 < w < 1:
