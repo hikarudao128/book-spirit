@@ -916,55 +916,151 @@ HAND_PROPS = {"phone": _p_phone, "pointer": _p_pointer, "gavel": _p_gavel, "rule
 
 
 # ------------------------------------------------------------------ dog
+def dog_points(pose="stand", t=0.0):
+    """Local (unscaled, facing right, ground y=0) layout of the dog for a pose at time t.
+    Used by draw_dog and by scene-local dog variants (e.g. scruffy strays) to place extras.
+    body = (cx, cy, rx, ry, rot), head = (hx, hy, r), back = top of the back, chest, rump."""
+    run = pose == "run"
+    if pose == "sit":
+        body = (4.0, -50.0, 35.0, 19.0, -56.0)
+        head = (30.0, -100.0, 20.0)
+        back = (-6.0, -66.0)
+        rump = (-14.0, -24.0)
+        bob = 0.0
+    else:
+        ph = t * 2 * math.pi * 2.4 if run else 0.0
+        bob = -abs(math.sin(ph)) * 5 if run else 0.0
+        tilt = math.sin(ph) * 3 if run else 0.0
+        body = (0.0, -47.0 + bob, 41.0, 20.0, tilt)
+        head = (44.0, -78.0 + bob + (math.sin(ph + 0.8) * 2 if run else 0.0), 20.0)
+        back = (-6.0, -66.0 + bob)
+        rump = (-36.0, -50.0 + bob)
+    return {"body": body, "head": head, "back": back, "rump": rump, "bob": bob}
+
+
+def _dog_leg(cv, hip, paw, knee_dx, w):
+    """Ink stick leg (hip -> paw, slight knee bend) with a small oval ink paw, like the people's shoes."""
+    (hx, hy), (px, py) = hip, paw
+    knee = ((hx + px) / 2 + knee_dx, (hy + py) / 2)
+    cv.line([hip, knee, paw], INK, w)
+    cv.ellipse(px + 3.5, py + 0.5, 7.5, 4.2, fill=INK, outline=None)
+
+
 def draw_dog(cv, x, y, scale=1.0, flip=False, pose="stand", t=0.0, color=(222, 168, 96), expression="happy",
              mouth_prop=None):
-    """Side-view street dog facing right (flip=True faces left). (x,y) = ground under the belly.
-    pose: 'stand' | 'run' | 'sit' | 'wag' (stand + fast tail).  mouth_prop: None | 'notebook'.
-    Same ink style as the people: flat colour, thick ink outline, stick legs, oval ink eye."""
-    dark = shade(color, 0.78)
+    """Side-view street dog facing right (flip=True faces left). (x,y) = ground under the dog
+    (the paws, and the haunch when sitting, rest on y).
+    pose: 'stand' | 'run' (gallop leg cycle) | 'sit' (side view: haunch, straight front legs, tail curled on
+    the ground) | 'wag' (stand + fast tail).  expression: 'happy' | 'neutral' | 'sad' | 'surprised'.
+    mouth_prop: None | 'notebook' (held crosswise in the mouth).
+    Same visual language as the stick-figure people: flat fill, ink outline, thin ink stick legs with
+    small oval ink paws, dot eye + brow, short curved ink tail."""
+    ow = 4.0
+    lw = 5.2                                # leg stroke (≈ the people's leg weight at scene scale)
+    dark = shade(color, 0.74)
+    muzzle = shade(color, 1.9)
     run = pose == "run"
-    ph = t * 9.0 if run else 0.0
-    bob = -abs(math.sin(ph)) * 8 if run else 0.0
-    wag = math.sin(t * (18 if pose in ("wag", "sit") or run else 6)) * (16 if pose != "stand" else 8)
-    ow = 3.4
-    with cv.at(x, y + bob, scale, flip=flip):
-        sit = pose == "sit"
-        body_y = -48 if not sit else -40
-        tb = (-40, body_y - 8) if not sit else (-30, -22)
-        cv.line(bezier(tb, (-62, body_y - 30 + wag * 0.3), (-58 + wag * 0.4, body_y - 52 + abs(wag) * 0.2), 8),
-                INK, 6)
-        legs = [(-26, 1), (24, 1), (-18, -1), (32, -1)] if not sit else [(-14, 1), (26, 1)]
-        for i, (lx, k) in enumerate(legs):
-            swing = math.sin(ph + i * 1.6) * 14 if run else 0
-            if sit and i == 0:
-                cv.ellipse(-16, -14, 24, 16, fill=color, ow=ow)
-                continue
-            cv.line([(lx, body_y + 8), (lx + swing, -4)], INK, 6)
-            cv.ellipse(lx + swing + 4, -3, 8, 4.5, fill=INK, outline=None)
+    sit = pose == "sit"
+    G = dog_points(pose, t)
+    bx, by, brx, bry, brot = G["body"]
+    hx, hy, hr = G["head"]
+    bob = G["bob"]
+    ph = t * 2 * math.pi * 2.4 if run else 0.0
+    fast = pose in ("wag", "run") or (sit and t > 0)
+    wag = math.sin(t * (17 if fast else 5)) * (1.0 if fast else 0.35)
+    if not (pose in ("wag", "run", "stand") or sit):
+        wag = 0.0
+    with cv.at(x, y, scale, flip=flip):
+        # ---- tail (behind everything)
         if sit:
-            cv.poly([(-34, -6), (-30, -52), (8, -76), (30, -64), (22, -8)], fill=color, ow=ow)
+            # curled on the ground behind the haunch, tip sweeping along the floor
+            tip = (-62 + wag * 4, -14 - abs(wag) * 6)
+            cv.line(bezier((-30, -10), (-56, 0), tip, 12), INK, lw)
         else:
-            cv.ellipse(0, body_y, 50, 22, fill=color, ow=ow)
-            cv.poly([(-50, body_y), (-26, body_y - 20), (-10, body_y + 21), (-44, body_y + 12)], fill=dark,
-                    outline=None)
-            cv.ellipse(0, body_y, 50, 22, fill=None, ow=ow)
-        hx, hy = (44, body_y - 26) if not sit else (26, -86)
-        cv.poly([(hx + 2, hy - 18), (hx - 14, hy + 8), (hx - 4, hy + 14)], fill=dark, ow=ow)
-        cv.circle(hx, hy, 22, fill=color, ow=ow)
-        cv.ellipse(hx + 22, hy + 8, 16, 11, fill=color, ow=ow)
-        cv.ellipse(hx + 36, hy + 3, 5, 4, fill=INK, outline=None)
-        cv.poly([(hx - 8, hy - 18), (hx - 26, hy + 2), (hx - 12, hy + 10)], fill=dark, ow=ow)
-        cv.ellipse(hx + 8, hy - 5, 3.2, 4.6, fill=INK, outline=None)
-        cv.line([(hx + 3, hy - 13), (hx + 13, hy - 14)], INK, 3)
-        if expression == "happy" and mouth_prop is None:
-            cv.curve((hx + 16, hy + 16), (hx + 24, hy + 22), (hx + 32, hy + 15), INK, 2.6)
-            cv.ellipse(hx + 24, hy + 24, 5, 8, fill=MOUTH_RED, ow=2.4)
+            r0 = G["rump"]
+            base = (r0[0] - 2, r0[1] - 6)
+            up = -1 if expression != "sad" else 1           # sad: tail tucked down
+            tip = (base[0] - 18 + wag * 9, base[1] + up * 24 - abs(wag) * 2 * up)
+            cv.line(bezier(base, (base[0] - 18, base[1] + up * 2), tip, 12), INK, lw)
+        # ---- far legs (behind the body)
+        if sit:
+            _dog_leg(cv, (24, -50), (30, -4.5), 0, lw)
+        else:
+            hip_y = by + 4
+            legs_far = [(-22, math.pi + 0.6), (34, 0.6)]
+            for lx, off in legs_far:
+                _dog_leg(cv, *_dog_leg_pts(lx, hip_y, ph + off, run), lw)
+        # ---- body
+        if sit:
+            with cv.at(bx, by, 1, rot=brot):
+                cv.ellipse(0, 0, brx, bry, fill=color, ow=ow)
+            cv.circle(-14, -24, 24, fill=color, ow=ow)                 # haunch
+            cv.curve((-28, -36), (-14, -46), (2, -38), dark, 3)          # thigh crease
+            # near front leg, straight down from the chest; hind paw peeking out in front of the haunch
+            _dog_leg(cv, (14, -46), (18, -4.5), 0, lw)
+            cv.ellipse(9, -4, 8, 4.4, fill=INK, outline=None)
+        else:
+            with cv.at(bx, by, 1, rot=brot):
+                cv.ellipse(0, 0, brx, bry, fill=color, ow=ow)
+                cv.ellipse(-6, -6, 14, 8, fill=dark, outline=None)        # one flat patch on the back
+            hip_y = by + 4
+            for lx, off in [(-30, math.pi), (26, 0.0)]:
+                _dog_leg(cv, *_dog_leg_pts(lx, hip_y, ph + off, run), lw)
+        # ---- head
+        ear_rot = 18 + (abs(math.sin(ph)) * 30 if run else 0) + (14 if expression == "sad" else 0)
+        cv.circle(hx, hy, hr, fill=color, ow=ow)
+        jaw_open = 0
         if mouth_prop == "notebook":
-            with cv.at(hx + 30, hy + 20, 1, rot=12):
-                cv.rect(-18, -10, 18, 12, fill=(70, 120, 200), ow=2.6)
-                cv.poly([(4, -10), (10, -4), (18, -10)], fill=P.WHITE, ow=1.6)   # chewed corner
-                cv.line([(-12, 2), (6, 2)], P.WHITE, 2)
-    return {"head": cv.to_screen(x + (44 if not flip else -44) * scale, y - 74 * scale)}
+            with cv.at(hx + 19, hy + 15, 1, rot=10):
+                cv.rect(-17, -11, 17, 11, fill=(70, 120, 200), ow=2.8, radius=2)
+                cv.line([(-12, -3), (8, -3)], P.WHITE, 2)
+                cv.line([(-12, 3), (4, 3)], (170, 190, 230), 2)
+                cv.poly([(10, -11), (17, -11), (17, -3)], fill=(240, 236, 220), ow=1.8)   # chewed corner
+        cv.ellipse(hx + 17, hy + 6, 14, 9.5, fill=muzzle, ow=ow)       # snout
+        cv.ellipse(hx + 30, hy + 2, 5.2, 4.2, fill=INK, outline=None)  # nose
+        # eye + brow
+        if expression == "surprised":
+            cv.circle(hx + 7, hy - 4, 4.6, fill=WHITE, ow=2.2)
+            cv.circle(hx + 8, hy - 4, 2.2, fill=INK, outline=None)
+            cv.line([(hx + 1, hy - 15), (hx + 12, hy - 17)], INK, 3)
+        else:
+            cv.ellipse(hx + 7, hy - 4, 3.2, 4.4, fill=INK, outline=None)
+            if expression == "sad":
+                cv.line([(hx + 1, hy - 11), (hx + 12, hy - 15)], INK, 3)
+            elif expression == "happy":
+                cv.curve((hx + 1, hy - 11), (hx + 6, hy - 15), (hx + 12, hy - 12), INK, 3)
+            else:
+                cv.line([(hx + 1, hy - 12), (hx + 12, hy - 12.5)], INK, 3)
+        # mouth on the snout
+        if mouth_prop is None:
+            if expression == "happy":
+                cv.curve((hx + 9, hy + 10), (hx + 16, hy + 16), (hx + 25, hy + 10), INK, 2.6)
+                cv.ellipse(hx + 17, hy + 17, 4, 5.5, fill=MOUTH_RED, ow=2.2)
+            elif expression == "sad":
+                cv.curve((hx + 11, hy + 14), (hx + 17, hy + 10), (hx + 24, hy + 13), INK, 2.6)
+            elif expression == "surprised":
+                cv.ellipse(hx + 18, hy + 13, 3.2, 3.6, fill=INK, outline=None)
+            else:
+                cv.line([(hx + 12, hy + 12), (hx + 24, hy + 11)], INK, 2.6)
+        # floppy ear over the back of the head
+        with cv.at(hx - 9, hy - 10, 1, rot=ear_rot):
+            cv.poly([(6, 0)] + ellipse_pts(0, 13, 8.5, 14, -20, 200, 16) + [(-6, 0)], fill=dark, ow=3.4)
+    top = (hx, hy - hr)
+    return {"head": cv.to_screen(x + (-hx if flip else hx) * scale, y + hy * scale),
+            "top": cv.to_screen(x + (-top[0] if flip else top[0]) * scale, y + top[1] * scale),
+            "mouth": cv.to_screen(x + (-(hx + 19) if flip else hx + 19) * scale, y + (hy + 14) * scale)}
+
+
+def _dog_leg_pts(lx, hip_y, phase, run):
+    """(hip, paw, knee_dx) for a standing/running leg; run = gallop swing with a lifted paw."""
+    L = -hip_y - 4.5
+    if not run:
+        return (lx, hip_y), (lx + 2, -4.5), 0
+    ang = math.sin(phase) * 0.55
+    lift = max(0.0, math.cos(phase)) * 9
+    px = lx + math.sin(ang) * L
+    py = -4.5 - lift
+    return (lx, hip_y), (px, py), -lift * 0.5
 
 
 # ------------------------------------------------------------------ vendor extras
