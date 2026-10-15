@@ -480,15 +480,15 @@ def draw_kitchen(cv, t=0.0, night=True):
 
 # ------------------------------------------------------------------ book cover
 def draw_book_cover(cv, cx=640, cy=360, w=300, h=440, rot=0.0, scale=1.0, show_english=True):
-    """Stylised cover of 'Cho tôi xin một vé đi tuổi thơ' (Nguyễn Nhật Ánh), shown with its English title.
-    show_english: adds the English-edition title line at the bottom."""
+    """Stylised cover of 'Cho tôi xin một vé đi tuổi thơ' (Nguyễn Nhật Ánh); Vietnamese title + author,
+    show_english adds the English title line at the bottom."""
     from .text import fit_size, wrap_text
     with cv.at(cx, cy, scale, rot=rot):
         # shadow + spine
         cv.rect(-w / 2 + 10, -h / 2 + 12, w / 2 + 10, h / 2 + 12, fill=INK, outline=None, radius=8)
         cv.rect(-w / 2, -h / 2, w / 2, h / 2, fill=(250, 222, 120), ow=4, radius=8)
         cv.rect(-w / 2, -h / 2, -w / 2 + 18, h / 2, fill=(230, 180, 70), ow=3, radius=4)
-        title = "Give Me a Ticket to Childhood"
+        title = "Cho tôi xin một vé đi tuổi thơ"
         tsize = 30 * w / 300
         lines = wrap_text(title, tsize, w - 70, "black")
         # illustration window below the title block: sky, sun, ticket, kite
@@ -509,8 +509,8 @@ def draw_book_cover(cv, cx=640, cy=360, w=300, h=440, rot=0.0, scale=1.0, show_e
         # title
         for i, ln in enumerate(lines):
             cv.text(9, -h / 2 + 38 + i * tsize * 1.13, ln, tsize, INK, "black")
-        cv.text(9, -h / 2 + 30 + len(lines) * tsize * 1.13 + 6, "NGUYEN NHAT ANH", 16 * w / 300, P.ACCENT,
+        cv.text(9, -h / 2 + 30 + len(lines) * tsize * 1.13 + 6, "NGUYỄN NHẬT ÁNH", 16 * w / 300, P.ACCENT,
                 "extrabold")
         if show_english:
-            s = fit_size("English edition: Ticket to Childhood", w - 60, 18, "bolditalic")
-            cv.text(9, h / 2 - 40, "English edition: Ticket to Childhood", s, INK, "bolditalic")
+            s = fit_size("Give Me a Ticket to Childhood", w - 60, 18, "bolditalic")
+            cv.text(9, h / 2 - 40, "Give Me a Ticket to Childhood", s, INK, "bolditalic")

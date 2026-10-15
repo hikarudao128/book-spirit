@@ -31,7 +31,7 @@ def main():
     for i, (k, ex, pose) in enumerate(kids):
         draw_character(cv, k, 230 + i * 270, 712, 1.8, expression=ex, pose=pose, blink=0.0,
                        mouth_open=0.55 if k in ("TI", "TUN") else 0.0, look=(0.2 if i < 2 else -0.2, 0))
-    label(cv, 170, 234, "NGUYEN NHAT ANH", 24, fill=INK, bg=P.HIGHLIGHT, rot=-4)
+    label(cv, 170, 234, "NGUYỄN NHẬT ÁNH", 24, fill=INK, bg=P.HIGHLIGHT, rot=-4)
     img = vignette(cv.finish(), 0.25)
     os.makedirs(os.path.join(ROOT, "out"), exist_ok=True)
     out = os.path.join(ROOT, "out", "thumbnail.png")
