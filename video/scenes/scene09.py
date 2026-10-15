@@ -2,8 +2,8 @@
 
 Beats (all from ctx):
   open on the scene-1 alley: little Mui bored on his step
-  "But here's the twist."  a FAST-FORWARD badge snaps on
-  "The person telling this story isn't eight."  time-lapse: sun whips across the sky, towers rise behind
+  "But here's the twist:"  a FAST-FORWARD badge snaps on
+  "the person telling this story isn't eight."  time-lapse: sun whips across the sky, towers rise behind
       the tube houses, shop signs and motorbikes multiply, Mui cross-fades kid -> teen -> young man ->
       Old Mui while an AGE counter spins 8 -> 49
   "It's Mui, almost fifty..."  push-in + name tag OLD MUI (callback to scene 1)
@@ -11,10 +11,10 @@ Beats (all from ctx):
   OLD MUI "What are you doing?" / HIS KID "Texting my girlfriend." (hearts float off the phone)
   OLD MUI "At your age?" (shocked)  ...  "Actually, at your age I was suing my dad." eyes slide away,
       a sepia flashback bubble of the plastic-stool courtroom (gavel bang on "dad")
-  "Little Mui thought adults were boring." polaroid of little Mui;  "Old Mui has become one." the
-      BORING ADULT label slams onto his chest
+  "Little Mui thought adults were boring," polaroid of little Mui;  "and Old Mui has become one." the
+      BORING ADULT label slams onto his chest on "become"
   "So who is this book really for?"  book cover pops on a sunburst
-  "...anyone who was once a child. Which is everyone."  banner + the whole cast pops up + EVERYONE stamp
+  "...anyone who was once a child, which is everyone."  banner + the whole cast pops up + EVERYONE stamp
   "...a train with no ticket inspector."  golden-hour countryside, a little train chugs through, the
       inspector's booth is empty, cap swinging on its hook
   "You can go back to childhood any time you like."  the kids wave from the windows, Old Mui drives
@@ -49,9 +49,9 @@ def beats(ctx):
     b["bubble"] = ctx.find_word(L[5].id, "suing") - 0.25
     b["dad"] = ctx.find_word(L[5].id, "dad")
     b["little"] = L[6].start
-    b["boring"] = ctx.find_word(L[6].id, "become") + 0.25
-    b["cut_book"] = L[7].start - 0.15
-    b["book"] = ctx.find_word(L[7].id, "book") - 0.1
+    b["boring"] = ctx.find_word(L[6].id, "become")
+    b["cut_book"] = L[7].start + 0.1             # BORING ADULT holds ~1 s first
+    b["book"] = b["cut_book"] + 0.1                # pops as the whip lands (no empty sunburst)
     b["for"] = ctx.find_word(L[7].id, "for")
     b["anyone"] = ctx.find_word(L[8].id, "anyone")
     b["which"] = ctx.find_word(L[8].id, "Which")
@@ -229,17 +229,19 @@ def phase1_overlay(cv, t, b):
 SIS = dict(shirt=(110, 200, 190))          # generic KID (engine `em`), recoloured only
 
 
-def _phone_hands(cv, x, y, t, skin, seed, glow=True):
+def _phone_in_hands(cv, hl, hr, t, skin, seed, glow=True):
+    """Phone held between the character's own hands (world-space hand points), below the chin."""
+    x, y = (hl[0] + hr[0]) / 2, (hl[1] + hr[1]) / 2 - 4
     with cv.at(x, y, 1, rot=math.sin(t * 2 + seed) * 3):
-        cv.rect(-14, -24, 14, 22, fill=INK, radius=5, ow=2.4)
-        cv.rect(-10, -19, 10, 15, fill=(160, 220, 255), outline=None, radius=2)
+        cv.rect(-12, -19, 12, 17, fill=INK, radius=5, ow=2.4)
+        cv.rect(-8.5, -15, 8.5, 12, fill=(160, 220, 255), outline=None, radius=2)
         if glow:
             for k in range(3):
-                cv.line([(-6, -12 + k * 8), (6 - (k % 2) * 6, -12 + k * 8)], (90, 150, 220), 2)
-        cv.circle(-15, 8, 9, fill=skin)
-        cv.circle(15, 8, 9, fill=skin)
+                cv.line([(-5, -9 + k * 7), (5 - (k % 2) * 5, -9 + k * 7)], (90, 150, 220), 2)
         thumb = math.sin(t * 14 + seed) > 0
-        cv.circle(8 if thumb else -6, 0, 5, fill=skin, ow=2)
+        cv.circle(6 if thumb else -5, 2, 4.5, fill=skin, ow=2)
+    for hx, hy in (hl, hr):                      # the hands grip the phone's sides, over its edges
+        cv.circle(hx + (3 if hx < x else -3), hy, 7.5, fill=skin, ow=2.4)
 
 
 def _noodle_cup(cv, x, y, t, seed):
@@ -273,24 +275,27 @@ def phase2(cv, t, b, ctx):
     out = {}
     with cv.camera(cx, cy, z):
         draw_kitchen(cv, t, night=True)
-        # the kids at the table
-        draw_character(cv, "HIS_KID", 350, 672, 1.1, pose="sit", expression="bored", t=t, look=(0, 0.9),
-                       mouth_open=ctx.mouth("HIS KID", t), blink=blink(t, 4))
-        draw_character(cv, "KID", 560, 652, 1.3, pose="sit", expression="bored", t=t + 1, look=(0, 0.9),
-                       variant=SIS, blink=blink(t, 6))
-        # phone glow on faces
+        # the kids at the table: phones held low between their own hands, mouths visible above them
+        def world(pt):
+            return ((pt[0] - 640) / z + cx, (pt[1] - 360) / z + cy)
+
+        ka = draw_character(cv, "HIS_KID", 350, 636, 1.1, pose="sit_hold_both", expression="bored", t=t,
+                            look=(0.2, 0.9), mouth_open=ctx.mouth("HIS KID", t), blink=blink(t, 4))
+        sa = draw_character(cv, "KID", 560, 627, 1.3, pose="sit_hold_both", expression="bored", t=t + 1,
+                            look=(0.2, 0.9), variant=SIS, blink=blink(t, 6))
         draw_dinner_table(cv, 470, 600, 500, dishes=False)
         _noodle_cup(cv, 250, 600, t, 0)
-        _noodle_cup(cv, 660, 600, t, 1)
-        _phone_hands(cv, 362, 592, t, P.SKIN, 0)          # held low at the table edge, chins above
-        _phone_hands(cv, 566, 594, t, P.SKIN, 2)
+        _noodle_cup(cv, 680, 600, t, 1)
+        for a_, seed in ((ka, 0), (sa, 2)):
+            _phone_in_hands(cv, world(a_["hand_l"]), world(a_["hand_r"]), t, P.SKIN, seed)
+        son_phone = world(((ka["hand_l"][0] + ka["hand_r"][0]) / 2, ka["hand_l"][1]))
         # hearts float off the son's phone while he texts his girlfriend
         hp = progress(t, b["text"] + 0.3, 2.2)
         if 0 < hp < 1:
             for i in range(3):
                 q = (hp * 1.6 - i * 0.25)
                 if 0 < q < 1:
-                    _heart(cv, 380 + math.sin(q * 6 + i) * 18 + i * 10, 560 - q * 120, 9 * (1 - q * 0.4))
+                    _heart(cv, son_phone[0] + 10 + math.sin(q * 6 + i) * 18 + i * 10, son_phone[1] - 30 - q * 120, 9 * (1 - q * 0.4))
         # Old Mui
         expr, pose, look = "neutral", "stand", (-0.8, 0.45)
         if t >= b["age"] - 0.1:
@@ -503,7 +508,7 @@ def phase4(cv, t, b):
         _booth(cv, t, b)
     ls = pop(t, b["no_insp"] + 0.1, 0.3) * (1 - progress(t, b["nobody"] - 0.2, 0.2))
     if ls > 0.01:
-        label(cv, 1040, 398, "INSPECTOR: ---", 24, bg=P.WHITE, scale=ls, rot=4)
+        label(cv, 1040, 372, "INSPECTOR: ---", 24, bg=P.WHITE, scale=ls, rot=4)
     cs = pop(t, b["back"], 0.3) * (1 - progress(t, b["nobody"] - 0.2, 0.2))
     if cs > 0.01:
         label(cv, 330, 110, "NEXT STOP: CHILDHOOD", 26, fill=P.WHITE, bg=P.ACCENT2, scale=cs)

@@ -30,10 +30,11 @@ HAI_Y = 488                      # Hai stands behind the plank (plank top at y=3
 GALLERY = {"TUN": 100, "TI": 240, "MUI": 380}
 STOOL_Y = 680
 DEF_X = (1520, 1690)
+PAN = 0.75                       # pan from Hai to the empty stools; the rest of the silence holds on them
 
 # giant adults for the "parents found out" shot: (name, x, scale, shirt) - shoulders sit at the top edge
 # of the frame so only torsos, hanging arms and the long legs show; they form a dark wall behind the kids
-ADULT_TONE = (34, 30, 38)
+ADULT_TONE = (40, 36, 46)
 ADULTS = [("DAD", 150, 4.25), ("MOM", 478, 4.0), ("DAD", 800, 4.1), ("MOM", 1128, 4.3)]
 KIDS_SMALL = [("HAI", 470, False), ("MUI", 585, False), ("TUN", 700, True), ("TI", 812, True)]
 
@@ -115,20 +116,20 @@ def _bang_state(t, bangs):
 def _court_cam(t, b):
     L = b["L"]
     wide = (540, 400, 1.12)
-    hai = (640, 285, 2.0)
+    hai = (640, 278, 2.0)
     charge = (840, 300, 1.55)
     stools = (1605, 520, 1.55)
     tun = (GALLERY["TUN"] + 68, 566, 2.25)
     keys = [(b["court"], wide), (b["order1"] - 0.25, wide), (b["order1"] - 0.05, hai, 0.2),
             (b["paper_in"] - 0.05, hai), (b["paper_in"] + 0.5, charge, 0.5),
             (b["paper_out"], charge), (L[6].start + 0.2, hai, 0.45),
-            (b["pan"], hai), (b["pan"] + 1.1, stools, 1.1)]
+            (b["pan"], hai), (b["pan"] + PAN, stools, PAN)]
     if t >= b["hai_cut"]:
         return (640, 285, lerp(1.9, 2.05, progress(t, b["hai_cut"], 2.0)))
     if t >= b["tun_cut"]:
         return tun
-    if t >= b["pan"] + 1.1:      # hold on the empty stools, creeping in
-        return (stools[0], stools[1], stools[2] * (1 + 0.06 * progress(t, b["pan"] + 1.1, 2.0)))
+    if t >= b["pan"] + PAN:      # hold on the empty stools, creeping in
+        return (stools[0], stools[1], stools[2] * (1 + 0.06 * progress(t, b["pan"] + PAN, 2.0)))
     return cam_keys(t, keys)
 
 
@@ -164,7 +165,7 @@ def _render_court(t, ctx, b, cv):
         # DEFENDANTS >> pointer sign on "defendants"
         s = pop(t, b["defendants"], 0.3) * (1 - progress(t, b["order1"] - 0.3, 0.2))
         if s > 0.01:
-            label(cv, 1010, 300, "DEFENDANTS  >>", 26, fill=P.WHITE, bg=P.ACCENT, scale=s, rot=-3)
+            label(cv, 905, 300, "DEFENDANTS  >>", 26, fill=P.WHITE, bg=P.ACCENT, scale=s, rot=-3)
 
         # Judge Hai behind the bench
         striking = impact > 0 and raised <= 0.3
@@ -222,7 +223,7 @@ def _render_court(t, ctx, b, cv):
             draw_character(cv, nm, x, STOOL_Y - 66, 1.0, **kw)
 
     # charge sheet (screen space)
-    pin = ease_out(progress(t, b["paper_in"], 0.4))
+    pin = ease_out(progress(t, b["paper_in"] + 0.15, 0.4))      # lands as the camera settles on it
     pout = progress(t, b["paper_out"], 0.35)
     if pin > 0 and pout < 1:
         px = lerp(1500, 905, pin) + 700 * pout ** 2
@@ -246,20 +247,22 @@ def _render_dark(t, ctx, b, cv):
     Implication only: nobody moves toward anyone. Slow push on the scared faces, cut to black on "beating"."""
     push = ease_in_out(progress(t, b["dark"], b["black"] - b["dark"]))
     cam = (640, lerp(372, 430, push), lerp(1.0, 1.14, push))
+    # pure silhouettes: every coloured detail of the new MOM/DAD designs (Dad's white collar, sleeves and
+    # pocket pen) is switched off, so only the shapes - shirt hem, hanging arms, long legs - read
     sil = {"skin": ADULT_TONE, "shirt": ADULT_TONE, "pants": ADULT_TONE, "hair_color": ADULT_TONE,
-           "shoes": ADULT_TONE, "cheeks": False,
-           "polo": False}          # no white collar trim; the work lanyards stay (they're "at work")
+           "shoes": ADULT_TONE, "cheeks": False, "polo": False, "collar": False, "sleeves": False,
+           "pocket_pen": False, "neck": None}
     hands = []
     with cv.camera(*cam):
         # dim courtyard wall, a little lighter low down so the dark figures read against it
         for k in range(12):
             y0 = -300 + k * 80
-            cv.rect(-300, y0, 1580, y0 + 82, fill=lerp_color((70, 64, 70), (132, 120, 112), k / 11), outline=None)
+            cv.rect(-300, y0, 1580, y0 + 82, fill=lerp_color((104, 96, 104), (142, 130, 122), k / 11), outline=None)
         cv.rect(-300, 610, 1580, 1100, fill=(96, 88, 84), outline=None)
         cv.line([(-300, 610), (1580, 610)], INK, 3)
         for i, (nm, x, sc) in enumerate(ADULTS):
             breathe = math.sin(t * 1.6 + i * 1.3) * 3
-            feet = -24 + 174 * sc + breathe      # shoulders (and the big heads) just above the frame
+            feet = -78 + 174 * sc + breathe      # chests at the top edge (heads off-frame); feet a step behind the kids
             a = draw_character(cv, nm, x, feet, sc, pose="stand", colors=sil, t=0, blink=1.0)
             hands.append((to_world(a["hand_r"], cam), to_world(a["hand_l"], cam), a["head_r"] * 11 / 70))
     bg = grade(cv.finish(), sat=0.35, mul=(0.8, 0.77, 0.84))

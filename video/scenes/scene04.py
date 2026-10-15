@@ -107,7 +107,7 @@ def shot_dog(t, ctx, b, cv):
     # a giant adult leans in from the right
     a = ease_out(progress(t, b["adults"] - 0.1, 0.35))
     if a > 0:
-        draw_character(cv, "DAD", lerp(1500, 1080, a), 940, 2.8, pose="point", flip=True, outfit="work",
+        draw_character(cv, "DAD", lerp(1500, 1080, a), 900, 2.4, pose="point", flip=True, outfit="work",
                        expression="neutral", t=t)
     stamp(cv, 470, 290, "OFFICIAL", pop(t, b["adults"] + 0.35, 0.2), rot=-10, size=40, fill=P.WHITE)
 
@@ -156,7 +156,10 @@ def shot_board(t, ctx, b, cv):
             expr, look = "proud", (0, 0)
         if after:
             expr, look = ("neutral" if t < b["adults2"] else ("scared" if nm == "TUN" else "deadpan")), (0, 0)
-        draw_character(cv, nm, x, 620 + jump, 1.6, pose=pose, expression=expr, t=t + i * 0.5, look=look,
+        # Hai's stork legs (1.75x) would hang through the stool and the floor when seated: shorten them
+        # just enough that his shoes rest on the floor like the others'
+        kw = {"variant": {"legs": 1.2}} if nm == "HAI" else {}
+        draw_character(cv, nm, x, 620 + jump, 1.6, pose=pose, expression=expr, t=t + i * 0.5, look=look, **kw,
                        mouth_open=ctx.mouth(nm, t), nod=math.sin(t * 20) * 4 if nm == "TUN" and pose == "sit_arms_up" else 0)
     props = ("pointer",) + (("notebook_hat",) if t >= b["hat"] else ())
     expr = "proud" if proud else ("deadpan" if after else "smug")
@@ -190,7 +193,8 @@ def _dinner(t, ctx, b, cv):
     lean = -8 if horrified else 0
     look = (-0.6, -0.4) if t < b["ban2"].start else (-0.5, -0.4)
     a = draw_character(cv, "MUI", 800, 712, 1.6, pose="cover_head" if horrified and t < b["foot"] else "stand",
-                       expression=expr, t=t, mouth_open=ctx.mouth("MUI", t), look=look, lean=lean)
+                       expression=expr, t=t, mouth_open=ctx.mouth("MUI", t), look=look, lean=lean,
+                       flip=True)      # faces Mom (left) while they argue
     if horrified:
         hx, hy = from_screen(cv, a["head"])
         hr = a["head_r"] / 1.22

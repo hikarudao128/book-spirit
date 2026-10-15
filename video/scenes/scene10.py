@@ -2,19 +2,19 @@
 
 Beats (all from ctx):
   "So, is it worth the ticket?"  a big childhood ticket drops in, a WORTH IT? stamp wobbles
-  "The good stuff."  the ticket flies off, a two-column board slides up: GOOD STUFF / LESS GOOD STUFF
-  "It's short." / "It's funny." / "...a child's voice"  rows pop with icons (thin book, laughing face,
+  "The good stuff first:"  the ticket flies off, a two-column board slides up: GOOD STUFF / LESS GOOD STUFF
+  "it's short, and it's funny." / "...a child's voice"  rows pop with icons (thin book, laughing face,
       slingshot). "...the sharpest weapon against adult nonsense" -> in the empty right column a big
       slingshot fires a pebble into a tower of ADULT NONSENSE paperwork, which explodes
   "S.E.A. Write Award in 2010" trophy row;  "hundreds of thousands of copies" the book-stack icon
       grows into a wobbling tower
   "Mostly, I assume, to adults who felt personally attacked."  footnote + an adult reading the book
       gets hit in the chest by an arrow (literally personally attacked)
-  "Now, to be fair."  LESS GOOD header pops;  "big plot" flat-line plot icon;  "string of episodes"
+  "Now, to be fair, ..."  LESS GOOD header pops;  "big plot" flat-line plot icon;  "string of episodes"
       little episode cards pop along a string;  "English version ... Southern flavor gets lost" a bowl
       of noodle soup drains to grey as it travels into an EN book
-  "Who should read it? Anyone who was once eight."  board slides away; little Mui with an 8 balloon
-  "Especially anyone who now has an eight-year-old."  Dad walks in holding Ti's hand; ESPECIALLY star
+  "So who should read it? Anyone who was once eight,"  board slides away; little Mui with an 8 balloon
+  "...and especially anyone who now has an eight-year-old."  Dad walks in holding Ti's hand; ESPECIALLY star
 """
 import math
 
@@ -239,9 +239,10 @@ def gag_attacked(cv, t, b):
     hit = t >= b["attacked"] + 0.1
     y = lerp(900, 0, s)
     with cv.at(0, y):
+        # stands on the board's bottom edge (whole figure inside the board, no legs poking out below it)
         # hold_both: left hand on his chest, right hand out holding the book; after the hit the book drops
         # and the left hand stays clutching the chest where the arrow lands
-        a = draw_character(cv, "DAD", 930, 800, 1.15, pose="hold_both", expression="shocked" if hit else "neutral",
+        a = draw_character(cv, "DAD", 930, 668, 1.0, pose="hold_both", expression="shocked" if hit else "neutral",
                            t=t, look=(0.6, 0.8) if not hit else (0.5, -0.2), blink=blink(t, 5),
                            lean=-6 if hit else 0)
         bx, by = a["hand_r"]
@@ -264,7 +265,7 @@ def gag_attacked(cv, t, b):
                 cv.poly([(0, 0), (16, -8), (16, 8)], fill=(150, 150, 160), ow=2)
                 cv.poly([(100, 0), (124, -12), (116, 0), (124, 12)], fill=P.ACCENT, ow=2)
         if hit:
-            label(cv, 1100, 430 + 2 * math.sin(t * 30), "PERSONALLY ATTACKED", 18, fill=P.WHITE, bg=P.ACCENT,
+            label(cv, 1060, 262 + 2 * math.sin(t * 30), "PERSONALLY ATTACKED", 18, fill=P.WHITE, bg=P.ACCENT,
                   scale=pop(t, b["attacked"] + 0.15, 0.25), rot=6)
 
 
@@ -390,28 +391,27 @@ def draw_who(cv, t, b):
     if wp > 0:
         dx = lerp(700, 0, ease_out(wp))
         walking = wp < 1
-        # Ti reaches out (point pose) and her hand lands exactly in Dad's hanging left hand; Dad stands low
-        # (feet below the frame) so the hand heights meet with both of them on roughly the same floor
-        dad_x, dad_y = 1040 + dx, 732
-        ti_s = 1.55
+        # Dad and Ti stand on the same floor, fully in frame (adult ~1.65x the kid). Ti's "present" hand at
+        # scale 1.3 sits at exactly the height of Dad's hanging left hand at 1.05, so the hands meet.
+        dad_x, dad_y = 1040 + dx, 655
+        ti_s = 1.3
         hop = -abs(math.sin(t * 9)) * 7 if walking else 0.0
-        dad = draw_character(cv, "DAD", dad_x, dad_y, 1.15, pose="walk" if walking else "stand", t=t + 0.2,
-                             expression="happy", look=(-0.6, 0.6), blink=blink(t, 7))
+        dad = draw_character(cv, "DAD", dad_x, dad_y, 1.05, pose="walk" if walking else "stand", t=t + 0.2,
+                             expression="happy", look=(-0.6, 0.6), mouth_open=0.0, blink=blink(t, 7))
         h2 = dad["hand_l"]
-        ti_x = h2[0] - 82 * ti_s / 1.5
-        ti_y = h2[1] + 140 * ti_s / 1.5
-        ti = draw_character(cv, "TI", ti_x, ti_y + hop, ti_s, pose="point", t=t,
+        ti_x = h2[0] - 63 * ti_s / 1.3
+        ti = draw_character(cv, "TI", ti_x, dad_y + hop, ti_s, pose="present", t=t,
                             expression="happy", look=(0.6, -0.7), blink=blink(t, 3))
         h1 = ti["hand_r"]
         cv.line([h1, h2], INK, 5)
         cv.circle(h2[0], h2[1], 10, fill=P.SKIN, ow=3.4)          # the two hands clasped
         es = pop(t, b["especially"] + 0.9, 0.35)
         if es > 0.01:
-            with cv.at(1120, 200, es, rot=10):
+            with cv.at(1140, 165, es, rot=10):
                 draw_star_burst(cv, 0, 0, 100, P.HIGHLIGHT, 12, rot=t * 20)
                 cv.text(0, -8, "ESPECIALLY", 17, INK, "black")
                 cv.text(0, 20, "YOU", 30, P.ACCENT, "black")
-            label(cv, 930, 700, "...OR HAS AN 8-YEAR-OLD", 22, bg=P.WHITE, scale=es)
+            label(cv, 975, 690, "...WHO NOW HAS AN 8-YEAR-OLD", 22, bg=P.WHITE, scale=es)
 
 
 def _bg_rays(cv, t):

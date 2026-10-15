@@ -37,6 +37,7 @@ COSTUME = {
     "MUI": dict(outfit="principal", pose="hold", expression="deadpan", props=("pointer",)),
     "TI": dict(outfit="snow_white", pose="wave", expression="happy", props=("crown",), variant={"bow": False}),
 }
+SLIDE = 0.36            # seconds to walk from the centre to the line-up slot
 JOB = {"HAI": "CHIEF OF POLICE", "TUN": "FLIGHT ATTENDANT", "MUI": "SCHOOL PRINCIPAL", "TI": "SNOW WHITE"}
 
 # house set
@@ -44,6 +45,7 @@ HFLOOR = 640
 DOOR_X = 1085
 TI_X, MUI_X, TUN_X = 345, 545, 830
 WALL = (244, 214, 170)
+SIGN_X, SIGN_Y = 700, 296   # HOUSE RULES sign (top ~221, bottom ~371: clear of the heads, inside every house shot)
 
 
 def beats(ctx):
@@ -56,7 +58,8 @@ def beats(ctx):
     spk = {"HAI": L[3], "TUN": L[4], "MUI": L[5], "TI": L[6]}
     b["out"] = {k: spk[k].start - 0.32 for k in ORDER}            # curtain parts, kid steps out
     nxt = {"HAI": "TUN", "TUN": "MUI", "MUI": "TI"}
-    b["slide"] = {k: b["out"][nxt[k]] - 0.05 for k in nxt}       # move aside for the next kid
+    # move aside just before the curtain parts for the next kid, so the two never overlap at the centre
+    b["slide"] = {k: b["out"][nxt[k]] - 0.3 for k in nxt}
     b["slide"]["TI"] = None
     b["notjob"] = ctx.find_word(L[7].id, "job")
     b["isnow"] = ctx.find_word(L[8].id, "now")
@@ -123,7 +126,7 @@ def _kid_on_stage(t, ctx, b, name):
     slide = b["slide"][name]
     pose, expr = c["pose"], c["expression"]
     if slide is not None and t >= slide:
-        sp = progress(t, slide, 0.42)
+        sp = progress(t, slide, SLIDE)
         x = lerp(640, slot, ease_in_out(sp))
         if sp < 1:
             pose = "walk"
@@ -140,11 +143,11 @@ def _kid_on_stage(t, ctx, b, name):
         kw.update(pose="hands_hip", expression="smug", look=(-0.6, 0))
     elif name == "TI" and t >= L[7].start:
         kw.update(pose="stand", expression="neutral", look=(-0.8, 0))
-    if name in ("TUN", "MUI") and t >= L[7].start and slide is not None and t >= slide + 0.42:
+    if name in ("TUN", "MUI") and t >= L[7].start and slide is not None and t >= slide + SLIDE:
         kw["look"] = (-0.6 if name == "MUI" else 0.8, 0)
-    if name == "HAI" and t >= b["slide"]["HAI"] + 0.42 and t < L[7].start - 0.1:
+    if name == "HAI" and t >= b["slide"]["HAI"] + SLIDE and t < L[7].start - 0.1:
         kw.update(pose="salute", expression="proud")    # keeps saluting, of course
-    if name == "TUN" and t >= b["slide"]["TUN"] + 0.42:
+    if name == "TUN" and t >= b["slide"]["TUN"] + SLIDE:
         kw["pose"] = "present"
     return x, y, sc, layer, kw
 
@@ -189,7 +192,7 @@ def _stage_front(t, b, cv, kids):
             continue
         sl = b["slide"][k]
         if sl is not None:
-            s = pop(t, sl + 0.4, 0.3)
+            s = pop(t, sl + SLIDE, 0.3)
             if s > 0.01 and t < b["house"]:
                 label(cv, SLOTS[k], GROUND + 26, JOB[k], 14, scale=s, bg=P.WHITE, pad=(10, 5), ow=2.6)
     return anchors
@@ -232,9 +235,9 @@ def _sticker(t, b, cv, anchors):
 def _house_cam(t, b):
     L = b["L"]
     wide = (692, 434, 1.45)
-    on_ti = (TI_X + 70, 522, 2.2)
-    on_tun = (TUN_X + 20, 470, 1.6)
-    on_mui = (MUI_X + 150, 462, 1.5)
+    on_ti = (TI_X + 70, 532, 2.2)          # sign is fully out of this one (bottom edge above frame)
+    on_tun = (TUN_X + 20, 448, 1.5)        # sign fully in frame above Tun
+    on_mui = (MUI_X + 125, 446, 1.45)      # sign fully in frame; Ti stays whole at the left
     keys = [(b["house"], wide), (L[10].start + 0.1, wide), (L[10].start + 0.45, on_ti, 0.35),
             (L[11].start - 0.2, on_ti), (L[11].start + 0.2, on_tun, 0.4),
             (L[12].start - 0.1, on_tun), (L[12].start + 0.35, on_mui, 0.45),
@@ -251,8 +254,8 @@ def _render_house(t, ctx, b, cv):
         cv.rect(190, 130, 310, 270, fill=WALL, outline=None)
         draw_door(cv, DOOR_X, 560, open_amount=1.0)
         # HOUSE RULES sign on the wall
-        board(cv, 690, 266, 290, 158, "HOUSE RULES", ["1. NO HOMEWORK", "2. GET DIRTY"], style="paper",
-              title_size=26, line_size=21, scale=pop(t, b["rules"] - 0.1, 0.35), rot=2,
+        board(cv, SIGN_X, SIGN_Y, 280, 150, "HOUSE RULES", ["1. NO HOMEWORK", "2. GET DIRTY"], style="paper",
+              title_size=25, line_size=20, scale=pop(t, b["rules"] - 0.1, 0.35), rot=2,
               reveal=progress(t, b["rules"] + 0.15, 0.6))
 
         # Tun, the child, at a little table - bolts out the door in the tail

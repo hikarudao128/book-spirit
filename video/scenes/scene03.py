@@ -63,9 +63,10 @@ def audio_cues(ctx):
         {"sfx": "thud", "start": b["never"] + 0.3, "gain": 0.35},
         {"sfx": "shutter", "start": b["freeze"]["TUN"], "gain": 0.45},
         {"sfx": "pop", "start": b["sweet"], "gain": 0.2},
-        {"sfx": "pop", "start": b["agrees"] + 0.3, "gain": 0.2},
-        {"sfx": "pop", "start": b["agrees"] + 0.7, "gain": 0.2},
-        {"sfx": "pop", "start": b["agrees"] + 1.1, "gain": 0.2},
+        {"sfx": "pop", "start": b["agrees"] + 0.25, "gain": 0.2},
+        {"sfx": "pop", "start": b["agrees"] + 0.55, "gain": 0.2},
+        {"sfx": "pop", "start": b["agrees"] + 0.85, "gain": 0.2},
+        {"sfx": "pop", "start": b["agrees"] + 1.15, "gain": 0.2},
         {"sfx": "shutter", "start": b["freeze"]["TI"], "gain": 0.45},
         {"sfx": "whoosh", "start": b["missing"], "gain": 0.25},
         {"sfx": "ding", "start": b["look"].end + 0.05, "gain": 0.3},
@@ -170,7 +171,7 @@ def shot_tun(t, ctx, b, cv):
                pop(t, b["sweet"] + k * 0.12, 0.3) * (1 - progress(t, b["agrees"], 0.3)) * 1.4)
     for k, (word, dx, dy, rot) in enumerate((("YES!", -230, -80, -10), ("OKAY!", 210, -120, 8),
                                              ("SURE!", -190, 60, 6), ("TOTALLY!", 230, 40, -6))):
-        s = pop(t, b["agrees"] + 0.3 + k * 0.4, 0.3)
+        s = pop(t, b["agrees"] + 0.25 + k * 0.3, 0.25)      # all four land before the cut to Ti
         label(cv, hx + dx, hy + dy, word, 30, bg=P.HIGHLIGHT, scale=s, rot=rot)
 
 
@@ -184,7 +185,8 @@ def shot_ti(t, ctx, b, cv):
         x = lerp(1500, INTRO_X, arrive)
         pose = "walk" if arrive < 1 else ("hands_hip" if t >= b["confident"] else "stand")
         talking = b["look"].start <= t < b["look"].end
-        expr = "smug" if (talking or t >= b["look"].end) else "happy"
+        # while she talks keep the open grin (it shows the gap); smug once the line lands
+        expr = "smug" if t >= b["look"].end else "happy"
         a = draw_character(cv, "TI", x, FLOOR_Y + 60, 2.6, pose=pose, expression=expr, t=t, flip=arrive < 1,
                            mouth_open=ctx.mouth("TI", t), look=(0, 0) if zoom_p > 0.5 else (-0.3, 0))
         m = from_screen(cv, a["mouth"])
@@ -214,7 +216,7 @@ def shot_group(t, ctx, b, cv):
     # the "adult world" picture
     s = pop(t, b["adult"], 0.3) * (1 - ease_out(progress(t, b["change"], 0.15)))
     if s > 0.01:
-        with cv.at(640, 150, s, rot=-2):
+        with cv.at(640, 112, s * 0.85, rot=-2):     # high enough that the caption clears Mui's tuft
             cv.rect(-190, -105, 190, 105, fill=(170, 170, 176), ow=4)
             cv.rect(-174, -89, 174, 89, fill=(130, 130, 138), outline=None)
             icon_briefcase(cv, -80, 10, 1.3, col=(100, 100, 106))
@@ -222,8 +224,8 @@ def shot_group(t, ctx, b, cv):
             for k in range(4):
                 cv.line([(45, -22 + k * 20), (115, -22 + k * 20)], (120, 120, 120), 3)
             cv.text(0, -122 + 230, "ADULT WORLD", 26, P.WHITE, "black", stroke=3)
-        stamp(cv, 660, 150, "BORING", s * pop(t, b["boring"] + 0.15, 0.2), rot=-14, size=56)
-    stamp(cv, 640, 150, "CHANGE IT!", pop(t, b["change"], 0.25) * (1 - ease_out(progress(t, b["how"].start - 0.2, 0.2))),
+        stamp(cv, 660, 112, "BORING", s * pop(t, b["boring"] + 0.15, 0.2), rot=-14, size=56)
+    stamp(cv, 640, 118, "CHANGE IT!", pop(t, b["change"], 0.25) * (1 - ease_out(progress(t, b["how"].start - 0.2, 0.2))),
           rot=-6, color=P.HIGHLIGHT, size=70)
     for i, (nm, x) in enumerate(GROUP):
         pose, expr, look = "stand", None, (0, 0)
@@ -245,7 +247,7 @@ def shot_group(t, ctx, b, cv):
             mui = a
     tx, ty = mui["top"]
     badge(cv, tx + 120, ty - 20, pop(t, b["three"], 0.35), "3", size=72)
-    lightbulb(cv, tx - 10, ty - 85, pop(t, b["three"] - 0.15, 0.35) * 1.1)
+    lightbulb(cv, tx - 10, ty - 102, pop(t, b["three"] - 0.15, 0.35) * 1.1)
 
 
 # ------------------------------------------------------------------ frame
