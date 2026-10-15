@@ -6,7 +6,7 @@ Beats (all from ctx):
       bored faces (Hai still tall with his band-aid, Ti with her bow and gap teeth, Tun's big eyes, Old Mui)
   "...became sensible adults"  SENSIBLE ADULTS label;  "...never did anything silly ever again."  SILLINESS: 0
   (pause) the others walk out of frame; Old Mui stops, looks at the dog. Camera eases in.
-  OLD MUI "...Banana."  tiny smile, the dog wags, colour comes back into the street
+  OLD MUI "...Banana."  turned to the dog, eyes on it, tiny smile; the dog wags, colour comes back into the street
   "For about forty years."  a kite climbs over the rooftops behind him
   fade to black, title card "Give me a ticket to childhood." held through the tail with a soft sting
 """
@@ -114,7 +114,7 @@ def render_frame(t, ctx):
             look = (lerp(0.5, 1.0, lp), lerp(0.3, 0.6, lp))
         expr = "bored"
         if t >= b["smile"]:
-            expr = "proud"
+            expr = "happy"          # open eyes, pupils on the dog: he says "...Banana." TO the dog, not to us
         a = draw_grown(cv, "MUI", mx, WALK_Y + 4, GS, pose="walk" if walking_mui else "stand",
                        t=t, expression=expr, look=look, mouth_open=ctx.mouth("OLD MUI", t),
                        blink=blink(t, 5) if t < b["look"] else 0)
